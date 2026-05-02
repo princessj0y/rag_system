@@ -25,6 +25,7 @@ from chunking.chunk_semantic import run_semantic_chunking_70, run_semantic_chunk
 from chunking.chunk_sentence import run_advanced_sentence_chunking
 from chunking.chunk_sliding_window import run_sliding_window
 from chunking.chunk_agentic import run_agentic_chunking
+from chunking.chunk_agentic_enrich import run_agentic_enrich_chunking
 
 files = [
     "./test/CELEX_32006L0054_IT_TXT.pdf",
@@ -47,7 +48,8 @@ chunking_strategies = {
     #"Sliding Window Chunking": run_sliding_window,
     #"Agentic Chunking Phi3": process_agentic_phi3,
     #"Agentic Chunking llama3": process_agentic_llama3,
-    "Agentic Chunking gpt-oss": run_agentic_chunking,
+    #"Agentic Chunking gpt-oss": run_agentic_chunking,
+    "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
 }
 
 # Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale
