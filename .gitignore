@@ -1,4 +1,7 @@
+.env.local
 test/*.md
+test/*.csv
+test/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

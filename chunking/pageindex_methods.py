@@ -1,13 +1,12 @@
+import os
 import json
 import time
 from pageindex import PageIndexClient
 
-# Configurazione
-API_KEY = ""
-pi_client = PageIndexClient(api_key=API_KEY)
+pi_client = PageIndexClient(api_key=os.environ.get("PAGE_INDEX_API_KEY"))
 
 # 1. Invio e recupero ID
-result = pi_client.submit_document("../test/CELEX_32006L0054_EN_TXT.pdf")
+result = pi_client.submit_document("./test/CELEX_32006L0054_EN_TXT.pdf")
 doc_id = result["doc_id"]
 
 # 2. Loop di controllo

@@ -1,24 +1,21 @@
 import nltk
 from nltk.tokenize import sent_tokenize
-from doc_cleaner import clean_doc 
+from .doc_cleaner import clean_doc 
 
-# Run this once in your terminal if you haven't: python -m nltk.downloader punkt
+nltk.download('punkt')
+nltk.download('punkt_tab')
 
-def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1):
-    print(f"Cleaning {target_file}...")
+def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1, is_eng = False):    
+    # Set NLTK language
+    lang = "english" if is_eng else "italian"
     
-    raw_text = clean_doc(target_file)
-    
-    # Set NLTK language based on the file name[cite: 1, 2]
-    lang = "english" if "EN" in target_file else "italian"
-    
-    # 2. Use NLTK for smart sentence splitting
+    # Use NLTK for smart sentence splitting
     sentences = sent_tokenize(raw_text, language=lang)
     
     chunks = []
     step_size = sentences_per_chunk - overlap
     
-    # 3. Use Grouping & Overlap for RAG Context
+    # Use Grouping & Overlap for RAG Context
     for i in range(0, len(sentences), step_size):
         chunk_group = sentences[i : i + sentences_per_chunk]
         chunk_text = " ".join(chunk_group)
@@ -26,11 +23,15 @@ def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1
         
         if i + sentences_per_chunk >= len(sentences):
             break
-            
-    print(f"\nCreated {len(chunks)} contextual chunks for the {lang} document.")
         
     return chunks
 
 # --- EXECUTION ---
-file_to_analyze = "../test/CELEX_32006L0054_EN_TXT.pdf"
-my_chunks = run_advanced_sentence_chunking(file_to_analyze)
+if __name__ == "__main__":
+    file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
+    
+    print(f"Cleaning {file_to_analyze}...")
+    raw_text = clean_doc(file_to_analyze)
+    
+    chunks = run_advanced_sentence_chunking(raw_text)
+    print(f"\nCreated {len(chunks)} contextual chunks for the document.")
