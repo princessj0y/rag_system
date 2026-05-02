@@ -35,8 +35,8 @@ files = [
 # Metodi di chunking
 # Keys are labels, Values are the actual function objects
 chunking_strategies = {
-    #"Fixed Length Chunking": run_fixed_size_chunking,
-    #"Fixed Length Chunking With Overlap": run_overlapping_chunking,
+    "Fixed Length Chunking": run_fixed_size_chunking,
+    "Fixed Length Chunking With Overlap": run_overlapping_chunking,
     #"Paragraph-based Chunking": run_paragraph_chunking,
     #"Recursive Chunking": run_recursive_chunking,
     #"Semantic Chunking 0.70": run_semantic_chunking_70,
@@ -49,7 +49,7 @@ chunking_strategies = {
     #"Agentic Chunking Phi3": process_agentic_phi3,
     #"Agentic Chunking llama3": process_agentic_llama3,
     #"Agentic Chunking gpt-oss": run_agentic_chunking,
-    "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
+    #"Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
 }
 
 # Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale

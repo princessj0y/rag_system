@@ -1,12 +1,18 @@
+import nltk
+from nltk.tokenize import word_tokenize
 from .doc_cleaner import clean_doc
 
-def run_fixed_size_chunking(raw_text, chunk_size=1000, is_eng = False):    
+nltk.download('punkt')
+nltk.download('punkt_tab')
+
+def run_fixed_size_chunking(raw_text, chunk_size=500, is_eng = False):   
+    # Set NLTK language
+    lang = "english" if is_eng else "italian"
+ 
     # Create the chunks
-    chunks = []
-    for i in range(0, len(raw_text), chunk_size):
-        chunks.append(raw_text[i:i + chunk_size])
-    
-    return chunks
+    words = word_tokenize(raw_text, language=lang)
+    chunks = [words[i:i + chunk_size] for i in range(0, len(words), chunk_size)]
+    return [" ".join(chunk) for chunk in chunks]
 
 # --- EXECUTION ---
 if __name__ == "__main__":
