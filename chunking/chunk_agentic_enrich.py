@@ -44,7 +44,7 @@ def generate_agentic_metadata(llm, text, en):
     summary = "N/A"
 
     try:
-        response = llm.invoke(prompt)
+        response = llm.invoke(prompt).text
 
         # Parse the non-parsed JSON string
         parsed_metadata = json.loads(response)

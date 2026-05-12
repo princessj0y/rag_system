@@ -10,12 +10,11 @@ from chunking.doc_cleaner import clean_doc
 
 from langchain_ollama import OllamaEmbeddings
 
-from google import genai
-from openai import OpenAI
 from ragas import evaluate
-from utils.model_factories import create_ragas_model
+from utils.model_factories import  create_default_ragas_model, create_default_model
 from ragas.metrics._context_precision import ContextPrecision
 from ragas.metrics._context_recall import ContextRecall
+from ragas.metrics._context_entities_recall import ContextEntityRecall
 
 from chunking.chunk_fixed_length import run_fixed_size_chunking
 from chunking.chunk_fixed_length_with_overlap import run_overlapping_chunking
@@ -27,9 +26,11 @@ from chunking.chunk_sliding_window import run_sliding_window
 from chunking.chunk_agentic import run_agentic_chunking
 from chunking.chunk_agentic_enrich import run_agentic_enrich_chunking
 
+from page_index.pageindex_retriever import retrieve_dataset as retrieve_pageindex_dataset
+
 files = [
-    "./test/CELEX_32006L0054_IT_TXT.pdf",
-    #"./test/CELEX_32006L0054_EN_TXT.pdf",
+    #("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
+    ("./test/CELEX_32006L0054_EN_TXT.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
 ]
 
 # Metodi di chunking
@@ -37,60 +38,29 @@ files = [
 chunking_strategies = {
     "Fixed Length Chunking": run_fixed_size_chunking,
     "Fixed Length Chunking With Overlap": run_overlapping_chunking,
-    #"Paragraph-based Chunking": run_paragraph_chunking,
-    #"Recursive Chunking": run_recursive_chunking,
-    #"Semantic Chunking 0.70": run_semantic_chunking_70,
-    #"Semantic Chunking 0.75": run_semantic_chunking_75,
-    #"Semantic Chunking 0.80": run_semantic_chunking_80,
-    #"Semantic Chunking 0.85": run_semantic_chunking_85,
-    #"Semantic Chunking 0.90": run_semantic_chunking_90,
-    #"Sentence-based Chunking": run_advanced_sentence_chunking,
-    #"Sliding Window Chunking": run_sliding_window,
+    "Paragraph-based Chunking": run_paragraph_chunking,
+    "Recursive Chunking": run_recursive_chunking,
+    "Semantic Chunking 0.70": run_semantic_chunking_70,
+    "Semantic Chunking 0.75": run_semantic_chunking_75,
+    "Semantic Chunking 0.80": run_semantic_chunking_80,
+    "Semantic Chunking 0.85": run_semantic_chunking_85,
+    "Semantic Chunking 0.90": run_semantic_chunking_90,
+    "Sentence-based Chunking": run_advanced_sentence_chunking,
+    "Sliding Window Chunking": run_sliding_window,
     #"Agentic Chunking Phi3": process_agentic_phi3,
     #"Agentic Chunking llama3": process_agentic_llama3,
-    #"Agentic Chunking gpt-oss": run_agentic_chunking,
-    #"Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
+    "Agentic Chunking gpt-oss": run_agentic_chunking,
+    "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
+    "PageIndex": None,
 }
 
 # Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 #embeddings = OllamaEmbeddings(model="mxbai-embed-large")
+answer_llm = create_default_model()
+llm= create_default_ragas_model()
 
-if "GOOGLE_API_KEY" in os.environ:
-    logger.info("Running with Gemini...")
-    client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
-    llm = create_ragas_model(
-        "gemini-3.1-flash-lite-preview",
-        provider="google",
-        client=client
-    )
-elif "OLLAMA_API_KEY" in os.environ:
-    logger.info("Running with Ollama Cloud...")
-    client = OpenAI(
-        api_key=os.environ.get("OLLAMA_API_KEY"), 
-        base_url="https://ollama.com/v1"
-    )
-    llm = create_ragas_model(
-        "gpt-oss:120b-cloud", 
-        provider="openai", 
-        client=client,                  
-        max_tokens=4096, 
-        # Ollama-specific context window size
-        extra_body={
-            "options": {
-                "num_ctx": 8192 # Total context (input + output)
-            }
-        },
-    )
-else:
-    logger.info("Running with Ollama...")
-    client = OpenAI(
-        api_key="ollama", 
-        base_url="http://localhost:11434/v1"
-    )
-    llm = create_ragas_model("phi3", provider="openai", client=client)
-
-def evaluate_method(name, chunking_function, raw_text, is_eng, dataset):
+def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     # Esegui il chunking
     logger.info(f"Performing chunking...")
     chunks = chunking_function(raw_text, is_eng=is_eng)
@@ -110,26 +80,46 @@ def evaluate_method(name, chunking_function, raw_text, is_eng, dataset):
 
     # Aggiungiamo i pezzi trovati al nostro dataset
     dataset["contexts"] = contexts
+    dataset["retrieved_contexts"] = contexts
+
+def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
+    
+    if chunking_function == None:
+        dataset = retrieve_pageindex_dataset(page_index_doc_id, dataset)
+    else:
+        dataset = retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset)
+
+    dataset["answer"]=[]
+    for i in len(dataset["question"]):
+        search_prompt = f"""
+        Answer only based on provided context.
+        Question: {dataset["question"][i]}
+        Context: {dataset["contexts"][i]}
+        """
+        answer = answer_llm.invoke(search_prompt).text
+        dataset["answer"].append(answer)
 
     # Valutazione
     dataset_finale = Dataset.from_dict(dataset)
     risultato = evaluate(
         dataset_finale, 
         embeddings=embeddings,
-        metrics=[ContextPrecision(llm=llm), ContextRecall(llm=llm)],
+        metrics=[ContextPrecision(llm=llm), ContextRecall(llm=llm), ContextEntityRecall(llm=llm)],
     )
+
     logger.info(risultato)
     return float(np.mean(risultato['context_precision'])), \
-            float(np.mean(risultato['context_recall']))
+            float(np.mean(risultato['context_recall'])), \
+            float(np.mean(risultato['context_entity_recall']))
 
-for file_name in files:
+for (file_name, page_index_doc_id) in files:
     with mdc(file_name=file_name):
-        logger.info(f"Analysing file {file_name}")
+        logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
         raw_text = clean_doc(file_name)
         is_eng = 'EN' in file_name
 
         if is_eng:
-            golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
+            golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched_EN.yaml")
         else:
             golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
 
@@ -139,12 +129,12 @@ for file_name in files:
             with mdc(method=name):
                 logger.info(f"Metodo {name}...")
                 try:
-                    precision, recall = evaluate_method(name, chunking_function, raw_text, is_eng, golden_dataset)
-                    table_data.append([name, f"{precision:.4f}", f"{recall:.4f}"])
+                    precision, recall, entity_recall = evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
+                    table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}"])
                 except Exception as e:
                     logger.exception("Failed, skipping")
 
-        headers = ["Method", "Precision", "Recall"]
+        headers = ["Method", "Precision", "Recall","ContextEntitiesRecall"]
         print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
         with open(file_name + '.csv', 'w', newline='') as csvfile:

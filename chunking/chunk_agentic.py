@@ -28,7 +28,7 @@ def agentic_chunk_block(llm, text_block):
     """
     
     try:
-        response = llm.invoke(prompt)
+        response = llm.invoke(prompt).text
         # Parse the JSON string back into a Python dictionary
         data = json.loads(response)
         return data.get("chunks", [])

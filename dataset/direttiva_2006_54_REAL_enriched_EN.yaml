@@ -1,0 +1,204 @@
+- id: ts1_short_01
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: What is the main purpose of Directive 2006/54/EC?
+  answer: To ensure the implementation of the principle of equal opportunities and equal treatment of men and women in matters of employment and occupation.
+  ground_truth: To ensure the implementation of the principle of equal opportunities and equal treatment of men and women in matters of employment and occupation.
+  article_refs:
+  - Art. 1
+  contexts:
+  - Directive 2006/54/EC – Art. 1
+  adversarial: false
+- id: ts1_short_02
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: How is direct discrimination defined in the directive?
+  answer: It is where one person is treated less favourably on grounds of sex than another is, has been or would be treated in a comparable situation.
+  ground_truth: It is where one person is treated less favourably on grounds of sex than another is, has been or would be treated in a comparable situation.
+  article_refs:
+  - Art. 2
+  contexts:
+  - Directive 2006/54/EC – Art. 2
+  adversarial: false
+- id: ts1_short_03
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Does harassment fall under the concept of discrimination?
+  answer: Yes, harassment and sexual harassment are considered forms of discrimination on grounds of sex.
+  ground_truth: Yes, harassment and sexual harassment are considered forms of discrimination on grounds of sex.
+  article_refs:
+  - Art. 2
+  contexts:
+  - Directive 2006/54/EC – Art. 2
+  adversarial: false
+- id: ts1_short_04
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Does the directive also apply to the private sector?
+  answer: Yes, it applies to both the public and private sectors.
+  ground_truth: Yes, it applies to both the public and private sectors.
+  article_refs:
+  - Art. 14
+  contexts:
+  - Directive 2006/54/EC – Art. 14
+  adversarial: false
+- id: ts1_short_05
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Is pregnancy protected as a cause of discrimination?
+  answer: Yes, any less favourable treatment related to pregnancy constitutes direct discrimination.
+  ground_truth: Yes, any less favourable treatment related to pregnancy constitutes direct discrimination.
+  article_refs:
+  - Art. 2
+  contexts:
+  - Directive 2006/54/EC – Art. 2
+  adversarial: false
+- id: ts1_short_06
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Does equal treatment also apply to pay?
+  answer: Yes, pay falls fully within the principle of equal treatment.
+  ground_truth: Yes, pay falls fully within the principle of equal treatment.
+  article_refs:
+  - Art. 4
+  contexts:
+  - Directive 2006/54/EC – Art. 4
+  adversarial: false
+- id: ts1_short_07
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Is recourse to positive action allowed?
+  answer: Yes, to promote the underrepresented sex in working life.
+  ground_truth: Yes, to promote the underrepresented sex in working life.
+  article_refs:
+  - Art. 3
+  contexts:
+  - Directive 2006/54/EC – Art. 3
+  adversarial: false
+- id: ts1_short_08
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Does the directive protect self-employed workers?
+  answer: Yes, in relation to occupational social security schemes.
+  ground_truth: Yes, in relation to occupational social security schemes.
+  article_refs:
+  - Art. 6
+  contexts:
+  - Directive 2006/54/EC – Art. 6
+  adversarial: false
+- id: ts1_short_09
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Is the right to return after maternity leave provided for?
+  answer: Yes, the right to return to the same job or an equivalent post is guaranteed.
+  ground_truth: Yes, the right to return to the same job or an equivalent post is guaranteed.
+  article_refs:
+  - Art. 15
+  contexts:
+  - Directive 2006/54/EC – Art. 15
+  adversarial: false
+- id: ts1_short_10
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Is victimization of a discriminated worker prohibited?
+  answer: Yes, any retaliatory treatment is prohibited.
+  ground_truth: Yes, any retaliatory treatment is prohibited.
+  article_refs:
+  - Art. 24
+  contexts:
+  - Directive 2006/54/EC – Art. 24
+  adversarial: false
+- id: ts1_short_11
+  test_set: 1
+  answer_type: short
+  difficulty: easy
+  question: Does the directive prohibit discrimination in occupational social security schemes?
+  answer: Yes, it prohibits any discrimination on grounds of sex in such schemes.
+  ground_truth: Yes, it prohibits any discrimination on grounds of sex in such schemes.
+  article_refs:
+  - Art. 5
+  contexts:
+  - Directive 2006/54/EC – Art. 5
+  adversarial: false
+- id: ts1_medium_01
+  test_set: 1
+  answer_type: medium
+  difficulty: medium
+  question: How does the directive define and regulate indirect discrimination?
+  answer: Indirect discrimination occurs where an apparently neutral provision, criterion or practice would put persons of one sex at a particular disadvantage compared with persons of the other sex, unless that provision, criterion or practice is objectively justified by a legitimate aim, and the means of achieving that aim are appropriate and necessary.
+  ground_truth: Indirect discrimination occurs where an apparently neutral provision, criterion or practice would put persons of one sex at a particular disadvantage compared with persons of the other sex, unless that provision, criterion or practice is objectively justified by a legitimate aim, and the means of achieving that aim are appropriate and necessary.
+  article_refs:
+  - Art. 2
+  contexts:
+  - Directive 2006/54/EC – Art. 2
+  adversarial: false
+- id: ts1_long_01
+  test_set: 1
+  answer_type: long
+  difficulty: hard
+  question: Explain the principle of equal pay laid down in Directive 2006/54/EC.
+  answer: The directive establishes that men and women must receive the same pay for the same work or for work of equal value. The value of the work must be determined on the basis of objective and sex-neutral criteria, such as skills, responsibilities, and working conditions. Any job classification system must be constructed so as to eliminate direct and indirect discrimination.
+  ground_truth: The directive establishes that men and women must receive the same pay for the same work or for work of equal value. The value of the work must be determined on the basis of objective and sex-neutral criteria, such as skills, responsibilities, and working conditions. Any job classification system must be constructed so as to eliminate direct and indirect discrimination.
+  article_refs:
+  - Art. 4
+  - Title II
+  contexts:
+  - Directive 2006/54/EC – Art. 4
+  - Directive 2006/54/EC – Title II
+  adversarial: false
+- id: ts2_short_01
+  test_set: 2
+  answer_type: short
+  difficulty: easy
+  question: Which articles link equal pay to working conditions?
+  answer: Articles 4 and 14 of the directive.
+  ground_truth: Articles 4 and 14 of the directive.
+  article_refs:
+  - Art. 4
+  - Art. 14
+  contexts:
+  - Directive 2006/54/EC – Art. 4
+  - Directive 2006/54/EC – Art. 14
+  adversarial: false
+- id: ts2_medium_01
+  test_set: 2
+  answer_type: medium
+  difficulty: medium
+  question: How are judicial protection and the burden of proof linked in the directive?
+  answer: 'The directive strengthens judicial protection by providing for the reversal of the burden of proof: once a presumption of discrimination is established, it is for the respondent to prove that there has been no breach of the principle of equal treatment.'
+  ground_truth: 'The directive strengthens judicial protection by providing for the reversal of the burden of proof: once a presumption of discrimination is established, it is for the respondent to prove that there has been no breach of the principle of equal treatment.'
+  article_refs:
+  - Art. 17
+  - Art. 19
+  contexts:
+  - Directive 2006/54/EC – Art. 17
+  - Directive 2006/54/EC – Art. 19
+  adversarial: false
+- id: ts2_long_01
+  test_set: 2
+  answer_type: long
+  difficulty: hard
+  question: Analyze how the directive guarantees the effectiveness of the principle of equal treatment by combining multiple regulatory instruments.
+  answer: The effectiveness of the principle of equality is guaranteed by an integrated system that includes the prohibition of discrimination, judicial protection, the reversal of the burden of proof, the absence of upper limits on compensation, and protection against victimization. Added to this is the role of equality bodies and dialogue with social partners, creating a coherent framework for the prevention and repression of discrimination.
+  ground_truth: The effectiveness of the principle of equality is guaranteed by an integrated system that includes the prohibition of discrimination, judicial protection, the reversal of the burden of proof, the absence of upper limits on compensation, and protection against victimization. Added to this is the role of equality bodies and dialogue with social partners, creating a coherent framework for the prevention and repression of discrimination.
+  article_refs:
+  - Title II
+  - Title III
+  - Art. 17
+  - Art. 19
+  contexts:
+  - Directive 2006/54/EC – Title II
+  - Directive 2006/54/EC – Title III
+  - Directive 2006/54/EC – Art. 17
+  - Directive 2006/54/EC – Art. 19
+  adversarial: true
