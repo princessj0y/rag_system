@@ -5,7 +5,7 @@ from dataset.dataset import load_dataset
 from utils.my_log import logger, mdc
 from tabulate import tabulate
 from datasets import Dataset
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma
 from chunking.doc_cleaner import clean_doc
 
 from langchain_ollama import OllamaEmbeddings
@@ -15,6 +15,7 @@ from utils.model_factories import  create_default_ragas_model, create_default_mo
 from ragas.metrics._context_precision import ContextPrecision
 from ragas.metrics._context_recall import ContextRecall
 from ragas.metrics._context_entities_recall import ContextEntityRecall
+from ragas.metrics._faithfulness import Faithfulness
 
 from chunking.chunk_fixed_length import run_fixed_size_chunking
 from chunking.chunk_fixed_length_with_overlap import run_overlapping_chunking
@@ -55,7 +56,7 @@ chunking_strategies = {
 }
 
 # Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
+embeddings = OllamaEmbeddings(model='qwen3-embedding:0.6b')
 #embeddings = OllamaEmbeddings(model="mxbai-embed-large")
 answer_llm = create_default_model()
 llm= create_default_ragas_model()
@@ -66,9 +67,16 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     chunks = chunking_function(raw_text, is_eng=is_eng)
 
     # Creiamo il database temporaneo con i TUOI chunk
-    logger.info(f"Creating temporary vector store...")
+    logger.info(f"Creating temporary vector store using Chroma...")
     contexts = []
-    vectorstore = FAISS.from_texts(chunks, embeddings)
+    
+    # Chroma accepts chunks and embeddings.
+    # We add an ephemeral collection name so it clears/overwrites properly in memory.
+    vectorstore = Chroma.from_texts(
+        texts=chunks, 
+        embedding=embeddings,
+        collection_name="temp_eval_collection"
+    )
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
     logger.info(f"Evaluating...")
@@ -77,6 +85,9 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
         docs = retriever.invoke(query)
         # Salviamo il testo dei pezzi trovati
         contexts.append([d.page_content for d in docs])
+
+    # Pulizia: Cancella la collezione per evitare che i chunk si mischino al prossimo ciclo
+    vectorstore.delete_collection()
 
     # Aggiungiamo i pezzi trovati al nostro dataset
     dataset["contexts"] = contexts
@@ -107,13 +118,14 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
     risultato = evaluate(
         dataset_finale, 
         embeddings=embeddings,
-        metrics=[ContextPrecision(llm=llm), ContextRecall(llm=llm), ContextEntityRecall(llm=llm)],
+        metrics=[ContextPrecision(llm=llm), ContextRecall(llm=llm), ContextEntityRecall(llm=llm), Faithfulness(llm=llm)], 
     )
 
     logger.info(risultato)
     return float(np.mean(risultato['context_precision'])), \
             float(np.mean(risultato['context_recall'])), \
-            float(np.mean(risultato['context_entity_recall']))
+            float(np.mean(risultato['context_entity_recall'])), \
+            float(np.mean(risultato['faithfulness']))
 
 for (file_name, page_index_doc_id) in files:
     with mdc(file_name=file_name):
@@ -132,12 +144,12 @@ for (file_name, page_index_doc_id) in files:
             with mdc(method=name):
                 logger.info(f"Metodo {name}...")
                 try:
-                    precision, recall, entity_recall = evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
-                    table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}"])
+                    precision, recall, entity_recall, faithfulness = evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
+                    table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}"])
                 except Exception as e:
                     logger.exception("Failed, skipping")
 
-        headers = ["Method", "Precision", "Recall","ContextEntitiesRecall"]
+        headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness"]
         print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
         with open(file_name + '.csv', 'w', newline='') as csvfile:
