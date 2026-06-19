@@ -7,17 +7,20 @@ def load_dataset(file_name):
     # Create the clean dictionary your code already knows how to use
     dataset = {
         "question": [],
+        "user_input": [],
         "ground_truth": [],
-        "contexts": [], # We leave this empty for now! 
-        "reference": []
+        "reference": [],
+        "contexts": [],
+        "retrieved_contexts": []
     }
 
     # Extract only what Ragas needs
     for item in yaml_data:
         dataset["question"].append(item["question"])
+        dataset["user_input"].append(item["question"])
         # Note: Ragas specifically looks for the key 'ground_truth', not 'answer'
         dataset["ground_truth"].append(item["ground_truth"])
-        dataset["reference"].append(item["article_refs"])
+        dataset["reference"].append(item["ground_truth"])
 
     return dataset
 

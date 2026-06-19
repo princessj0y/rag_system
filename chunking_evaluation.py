@@ -81,6 +81,7 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     # Aggiungiamo i pezzi trovati al nostro dataset
     dataset["contexts"] = contexts
     dataset["retrieved_contexts"] = contexts
+    return dataset
 
 def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
     
@@ -89,15 +90,17 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
     else:
         dataset = retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset)
 
-    dataset["answer"]=[]
-    for i in len(dataset["question"]):
+    # Lo usa solo la faithfulness:
+    dataset["response"]=[]
+    for i in range(len(dataset["question"])):
         search_prompt = f"""
         Answer only based on provided context.
         Question: {dataset["question"][i]}
         Context: {dataset["contexts"][i]}
         """
         answer = answer_llm.invoke(search_prompt).text
-        dataset["answer"].append(answer)
+        dataset["response"].append(answer)
+    dataset["answer"] = dataset["response"]
 
     # Valutazione
     dataset_finale = Dataset.from_dict(dataset)

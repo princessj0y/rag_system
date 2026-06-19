@@ -16,9 +16,12 @@ def retrieve_dataset(doc_id, dataset):
         raise "Document was not processed"
     
     tree = pi_client.get_tree(doc_id, node_summary=True)['result']
+    contexts = []
     for query in dataset["question"]:
-        dataset["contexts"].append([ retrieve(tree, llm, query) ])
-        dataset["retrieved_contexts"].append(dataset["contexts"])
+        contexts.append([ retrieve(tree, llm, query) ])
+        
+    dataset["contexts"] = contexts
+    dataset["retrieved_contexts"] = contexts
     return dataset
 
 def retrieve(tree, llm, query):
