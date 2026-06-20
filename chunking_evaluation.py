@@ -127,10 +127,11 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
     )
 
     logger.info(risultato)
-    return float(np.mean(risultato['context_precision'])), \
-            float(np.mean(risultato['context_recall'])), \
-            float(np.mean(risultato['context_entity_recall'])), \
-            float(np.mean(risultato['faithfulness']))
+    df = risultato.to_pandas()
+    return df['context_precision'].mean(), \
+            df['context_recall'].mean(), \
+            df['context_entity_recall'].mean(), \
+            df['faithfulness'].mean()
 
 for (file_name, page_index_doc_id) in files:
     with mdc(file_name=file_name):

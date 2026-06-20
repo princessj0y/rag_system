@@ -23,6 +23,7 @@ dependencies = [
     "ollama>=0.6.1",
     "openai>=2.24.0",
     "pageindex>=0.2.8",
+    "pandas>=3.0.2",
     "pdfplumber>=0.11.9",
     "pymupdf4llm>=1.27.2.3",
     "pypdf>=6.10.2",
