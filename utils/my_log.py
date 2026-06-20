@@ -1,4 +1,3 @@
-import uuid
 import logging
 import contextvars
 from contextlib import contextmanager
@@ -22,14 +21,18 @@ class MDCFilter(logging.Filter):
         
         return True
 
+class MDCFormatter(logging.Formatter):
+    def format(self, record):
+        if not hasattr(record, "mdc"):
+            record.mdc = ""
+        return super().format(record)
+
 # 3. Setup Logging
 logger = logging.getLogger("my_app")
 handler = logging.StreamHandler()
 
 # Ensure placeholders match your context keys
-formatter = logging.Formatter(
-    '%(asctime)s | %(levelname)s%(mdc)s | %(message)s'
-)
+formatter = MDCFormatter('%(asctime)s | %(levelname)s%(mdc)s | %(message)s')
 handler.setFormatter(formatter)
 handler.addFilter(MDCFilter())
 logger.addHandler(handler)

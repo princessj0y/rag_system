@@ -1,5 +1,6 @@
 import os
 import json
+from tqdm import tqdm
 from pageindex import PageIndexClient
 import pageindex.utils as utils
 from utils.model_factories import create_default_model
@@ -17,7 +18,7 @@ def retrieve_dataset(doc_id, dataset):
     
     tree = pi_client.get_tree(doc_id, node_summary=True)['result']
     contexts = []
-    for query in dataset["question"]:
+    for query in tqdm(dataset["question"], desc="Retrieving tree"):
         contexts.append([ retrieve(tree, llm, query) ])
         
     dataset["contexts"] = contexts

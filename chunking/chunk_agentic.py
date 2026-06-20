@@ -1,5 +1,6 @@
 import os
 import json
+from tqdm import tqdm
 from .doc_cleaner import clean_doc
 from utils.my_log import logger
 from utils.model_factories import create_ollama_model
@@ -66,8 +67,7 @@ def run_agentic_chunking(raw_text, model_name='gpt-oss:120b-cloud', is_eng = Fal
     
     # The Agentic Loop
     final_agentic_chunks = []
-    for i, block in enumerate(pre_chunks, start=1):
-        logger.info(f"Agent is analyzing block {i}...")
+    for i, block in enumerate(tqdm(pre_chunks, "Analyzing pre-chunks"), start=1):
         smart_chunks = agentic_chunk_block(llm, block)
         final_agentic_chunks.extend(smart_chunks)
 

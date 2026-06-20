@@ -1,5 +1,6 @@
 import os
 import json
+from tqdm import tqdm
 from .doc_cleaner import clean_doc
 from utils.my_log import logger
 from utils.model_factories import create_ollama_model
@@ -97,8 +98,7 @@ def run_agentic_enrich_chunking(raw_text, model="gpt-oss:120b-cloud", is_eng=Fal
     agentic_results = []
     
     # Ciclo Agentico: chiediamo a Ollama di "capire" ogni chunk
-    for i, chunk in enumerate(initial_chunks):
-        logger.info(f"Analisi chunk {i+1}/{len(initial_chunks)}...")
+    for i, chunk in enumerate(tqdm(initial_chunks, desc="Enriching chunks")):
         title, summary = generate_agentic_metadata(llm, chunk, is_eng)
         # Create the enriched chunk
         agentic_results.append(f"TITLE: {title}\nSUMMARY: {summary}\nCONTENT: {chunk}")

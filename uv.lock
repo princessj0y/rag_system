@@ -3381,6 +3381,7 @@ dependencies = [
     { name = "rapidfuzz" },
     { name = "sentence-transformers" },
     { name = "tabulate" },
+    { name = "tqdm" },
 ]
 
 [package.metadata]
@@ -3414,6 +3415,7 @@ requires-dist = [
     { name = "rapidfuzz", specifier = ">=3.14.5" },
     { name = "sentence-transformers", specifier = ">=5.4.1" },
     { name = "tabulate", specifier = ">=0.10.0" },
+    { name = "tqdm", specifier = ">=4.67.3" },
 ]
 
 [[package]]

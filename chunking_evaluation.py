@@ -1,12 +1,13 @@
-import os
 import csv
-import numpy as np
 from dataset.dataset import load_dataset
-from utils.my_log import logger, mdc
 from tabulate import tabulate
 from datasets import Dataset
 from langchain_community.vectorstores import Chroma
 from chunking.doc_cleaner import clean_doc
+
+from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
+from utils.my_log import logger, mdc
 
 from langchain_ollama import OllamaEmbeddings
 
@@ -133,33 +134,34 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
             df['context_entity_recall'].mean(), \
             df['faithfulness'].mean()
 
-for (file_name, page_index_doc_id) in files:
-    with mdc(file_name=file_name):
-        logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
-        raw_text = clean_doc(file_name)
-        is_eng = 'EN' in file_name
+with logging_redirect_tqdm(loggers=[logger]):
+    for (file_name, page_index_doc_id) in tqdm(files, desc="Files"):
+        with mdc(file_name=file_name):
+            logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
+            raw_text = clean_doc(file_name)
+            is_eng = 'EN' in file_name
 
-        if is_eng:
-            golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched_EN.yaml")
-        else:
-            golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
+            if is_eng:
+                golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched_EN.yaml")
+            else:
+                golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
 
-        # Esegui benchmark
-        table_data = []
-        for name, chunking_function in chunking_strategies.items():
-            with mdc(method=name):
-                logger.info(f"Metodo {name}...")
-                try:
-                    precision, recall, entity_recall, faithfulness = evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
-                    table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}"])
-                except Exception as e:
-                    logger.exception("Failed, skipping")
+            # Esegui benchmark
+            table_data = []
+            for name, chunking_function in tqdm(chunking_strategies.items(), desc="Chunking strategies"):
+                with mdc(method=name):
+                    logger.info(f"Metodo {name}...")
+                    try:
+                        precision, recall, entity_recall, faithfulness = evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
+                        table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}"])
+                    except Exception as e:
+                        logger.exception("Failed, skipping")
 
-        headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness"]
-        print("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+            headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness"]
+            tqdm.write("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
-        with open(file_name + '.csv', 'w', newline='') as csvfile:
-            csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-            csvwriter.writerow(headers)
-            for row in table_data:
-                csvwriter.writerow(row)
+            with open(file_name + '.csv', 'w', newline='') as csvfile:
+                csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                csvwriter.writerow(headers)
+                for row in table_data:
+                    csvwriter.writerow(row)
