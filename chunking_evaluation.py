@@ -11,7 +11,7 @@ from chunking.doc_cleaner import clean_doc
 from langchain_ollama import OllamaEmbeddings
 
 from ragas import evaluate
-from utils.model_factories import  create_default_ragas_model, create_default_model
+from utils.model_factories import create_default_ragas_model_iterator, create_default_model
 from ragas.metrics._context_precision import ContextPrecision
 from ragas.metrics._context_recall import ContextRecall
 from ragas.metrics._context_entities_recall import ContextEntityRecall
@@ -58,8 +58,7 @@ chunking_strategies = {
 # Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale
 embeddings = OllamaEmbeddings(model='qwen3-embedding:0.6b')
 #embeddings = OllamaEmbeddings(model="mxbai-embed-large")
-answer_llm = create_default_model()
-llm= create_default_ragas_model()
+llm_iterator = create_default_ragas_model_iterator()
 
 def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     # Esegui il chunking
@@ -102,7 +101,8 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
         dataset = retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset)
 
     # Lo usa solo la faithfulness:
-    dataset["response"]=[]
+    dataset["response"] = []
+    answer_llm = create_default_model()
     for i in range(len(dataset["question"])):
         search_prompt = f"""
         Answer only based on provided context.
@@ -118,7 +118,12 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
     risultato = evaluate(
         dataset_finale, 
         embeddings=embeddings,
-        metrics=[ContextPrecision(llm=llm), ContextRecall(llm=llm), ContextEntityRecall(llm=llm), Faithfulness(llm=llm)], 
+        metrics=[
+            ContextPrecision(llm=next(llm_iterator)), 
+            ContextRecall(llm=next(llm_iterator)), 
+            ContextEntityRecall(llm=next(llm_iterator)), 
+            Faithfulness(llm=next(llm_iterator)),
+        ], 
     )
 
     logger.info(risultato)
