@@ -3,7 +3,7 @@ import json
 from tqdm import tqdm
 from .doc_cleaner import clean_doc
 from utils.my_log import logger
-from utils.model_factories import create_ollama_model
+from utils.model_factories import create_model_by_name
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def agentic_chunk_block(llm, text_block):
@@ -37,7 +37,7 @@ def agentic_chunk_block(llm, text_block):
         logger.exception("LLM Agent failed. Falling back to original block.")
         return [text_block]
 
-def run_agentic_chunking(raw_text, model_name='gpt-oss:120b-cloud', is_eng = False):
+def run_agentic_chunking(raw_text, model_name=None, is_eng = False):
     logger.info("Pre-chunking text to feed the Agent...")
     # The Pre-Chunker (creates digestible blocks for the LLM)
     pre_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=0)
@@ -46,24 +46,12 @@ def run_agentic_chunking(raw_text, model_name='gpt-oss:120b-cloud', is_eng = Fal
     logger.info(f"Sending {len(pre_chunks)} blocks to the Ollama Agent. Please wait...")
 
     system = "You output strictly valid JSON."
-    if 'cloud' not in model_name:
-        llm = create_ollama_model(
-            model=model_name,
-            format="json",
-            system=system,
-            # temperature=0.2, num_predict=50
-        )
-    else:
-        if "OLLAMA_API_KEY" not in os.environ:
-            raise "no OLLAMA_API_KEY env var found"
-        
-        llm = create_ollama_model(
-            model=model_name,
-            format="json",
-            system=system,
-            base_url="https://ollama.com",
-            headers={"Authorization": f"Bearer {os.environ.get("OLLAMA_API_KEY")}"},
-        )
+    llm = create_model_by_name(
+        model=model_name,
+        format="json",
+        system=system,
+        # temperature=0.2, num_predict=50
+    )
     
     # The Agentic Loop
     final_agentic_chunks = []
@@ -82,7 +70,7 @@ if __name__ == "__main__":
     # Remove the [:3000] if you want to process the whole document (Warning: Slow!)
     test_text = raw_text[:3000]
 
-    my_chunks = run_agentic_chunking(test_text)
+    my_chunks = run_agentic_chunking(test_text, model='gpt-oss:120b-cloud')
 
     print(f"\n--- Agentic Chunking Results ---")
     print(f"The Agent turned raw blocks into {len(my_chunks)} highly refined chunks.")

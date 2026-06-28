@@ -3,7 +3,7 @@ import json
 from tqdm import tqdm
 from .doc_cleaner import clean_doc
 from utils.my_log import logger
-from utils.model_factories import create_ollama_model
+from utils.model_factories import create_model_by_name
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # --- PROMPTS ---
@@ -60,7 +60,7 @@ def generate_agentic_metadata(llm, text, en):
     return title, summary
 
 # --- 2. ESTRAZIONE E CHUNKING ---
-def run_agentic_enrich_chunking(raw_text, model="gpt-oss:120b-cloud", is_eng=False):
+def run_agentic_enrich_chunking(raw_text, model=None, is_eng=False):
     
     if is_eng:
         system = system_prompt_en
@@ -68,24 +68,12 @@ def run_agentic_enrich_chunking(raw_text, model="gpt-oss:120b-cloud", is_eng=Fal
         system = system_prompt_it
 
     # aggiungiamo temp e num predict per velocizzare ancora di più
-    if 'cloud' not in model:
-        llm = create_ollama_model(
-            model=model,
-            format="json",
-            system=system,
-            # temperature=0.2, num_predict=50
-        )
-    else:
-        if "OLLAMA_API_KEY" not in os.environ:
-            raise "no OLLAMA_API_KEY env var found"
-        
-        llm = create_ollama_model(
-            model=model,
-            format="json",
-            system=system,
-            base_url="https://ollama.com",
-            headers={"Authorization": f"Bearer {os.environ.get("OLLAMA_API_KEY")}"},
-        )
+    llm = create_model_by_name(
+        model=model,
+        format="json",
+        system=system,
+        # temperature=0.2, num_predict=50
+    )
 
     # Split iniziale (Recursive)
     splitter = RecursiveCharacterTextSplitter(

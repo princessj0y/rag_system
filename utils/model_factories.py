@@ -77,6 +77,37 @@ def create_default_model(**kwargs):
         )
     return llm 
 
+def create_model_by_name(model, **kwargs):
+    if model is None:
+        return create_default_model(**kwargs)
+    
+    if 'gemini' in model:
+        if "GOOGLE_API_KEY" not in os.environ:
+            raise f"no GOOGLE_API_KEY env var found, cannot use {model}"
+        
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        llm = ChatGoogleGenerativeAI(
+            model=model,
+            google_api_key=os.environ.get("GOOGLE_API_KEY"),
+            **kwargs
+        )
+
+    if 'cloud' in model:
+        if len(ollama_api_keys) == 0:
+            raise f"no OLLAMA_API_KEY env var found, cannot use {model}"
+
+        return create_ollama_model(
+            model=model,
+            base_url="https://ollama.com",
+            client_kwargs={
+                "headers": {
+                    "Authorization": f"Bearer {next(ollama_api_keys_cycle)}"
+                }
+            },
+            **kwargs
+        )
+    
+    return create_ollama_model(model=model, **kwargs)
         
 def create_ragas_model(model, provider="openai", **kwargs):
     from ragas.llms import llm_factory
