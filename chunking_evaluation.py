@@ -150,10 +150,6 @@ async def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, 
             response=row["response"],
             retrieved_contexts=row["retrieved_contexts"],
         )
-        logger.info(cp_score)
-        logger.info(cr_score)
-        logger.info(cer_score)
-        logger.info(f_score)
         
         return {
             **row,

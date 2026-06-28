@@ -102,7 +102,6 @@ def run_agentic_enrich_chunking(raw_text, model="gpt-oss:120b-cloud", is_eng=Fal
         title, summary = generate_agentic_metadata(llm, chunk, is_eng)
         # Create the enriched chunk
         agentic_results.append(f"TITLE: {title}\nSUMMARY: {summary}\nCONTENT: {chunk}")
-        logger.info("")
         
     return agentic_results
     
