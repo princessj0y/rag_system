@@ -63,7 +63,11 @@ def create_default_model(**kwargs):
         llm = create_ollama_model(
             model=model_name,
             base_url="https://ollama.com",
-            headers={"Authorization": f"Bearer {next(ollama_api_keys_cycle)}"},
+            client_kwargs={
+                "headers": {
+                    "Authorization": f"Bearer {next(ollama_api_keys_cycle)}"
+                }
+            },
             **kwargs
         )
     else:
