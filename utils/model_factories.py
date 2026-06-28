@@ -1,6 +1,7 @@
 import os
 from .my_log import logger
 import itertools
+import random
 
 from langchain_core.callbacks import BaseCallbackHandler
 from ragas.llms import llm_factory
@@ -28,6 +29,10 @@ ollama_api_keys = [
     )) is not None
 ]
 ollama_api_keys_cycle = itertools.cycle(ollama_api_keys) if ollama_api_keys else None
+
+# Randomize the first model used by skipping a random amount
+for i in range(random.randint(0, len(ollama_api_keys))):
+    next(ollama_api_keys_cycle)
 
 if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
@@ -123,4 +128,9 @@ def create_default_ragas_model_iterator():
         )
         models.append(create_ragas_model(model_name, provider="openai", client=client))
 
-    return itertools.cycle(models)
+    iter = itertools.cycle(models)
+    # Randomize the first model used by skipping a random amount
+    for i in range(random.randint(0, len(models))):
+        next(iter)
+    return iter
+
