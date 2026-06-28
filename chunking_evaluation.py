@@ -11,9 +11,6 @@ from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from utils.my_log import logger, mdc
 
-from langchain_ollama import OllamaEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
-
 from ragas import experiment, Dataset
 from utils.model_factories import model_name, create_default_ragas_model_iterator, create_default_model
 from ragas.metrics.collections import (
@@ -68,8 +65,10 @@ embeddings_model_name = 'dlicari/Italian-Legal-BERT'
 #embeddings_model_name = 'mxbai-embed-large'
 
 if embeddings_model_name == 'dlicari/Italian-Legal-BERT':
+    from langchain_huggingface import HuggingFaceEmbeddings
     embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
 else:
+    from langchain_ollama import OllamaEmbeddings
     embeddings = OllamaEmbeddings(model=embeddings_model_name)
 
 llm_iterator = create_default_ragas_model_iterator()
