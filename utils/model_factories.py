@@ -9,7 +9,7 @@ from langchain_ollama import ChatOllama
 from langchain_core.callbacks import StreamingStdOutCallbackHandler
 
 from google import genai
-from openai import OpenAI
+from openai import AsyncOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 is_streaming_stdout_enabled = os.getenv("DEBUG_PRINT_STDOUT", "false").lower() == "true"
@@ -28,6 +28,13 @@ ollama_api_keys = [
     )) is not None
 ]
 ollama_api_keys_cycle = itertools.cycle(ollama_api_keys) if ollama_api_keys else None
+
+if "GOOGLE_API_KEY" in os.environ:
+    model_name = "gemini-3.1-flash-lite-preview"
+elif ollama_api_keys_cycle is not None:
+    model_name = "gpt-oss:120b-cloud"
+else:
+    model_name = "phi3"
 
 def create_ollama_model(model, system=None, **kwargs):
     # Initialize the callbacks list from kwargs or a new list
@@ -50,20 +57,20 @@ def create_ollama_model(model, system=None, **kwargs):
 def create_default_model(**kwargs):
     if "GOOGLE_API_KEY" in os.environ:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-3.1-flash-lite-preview",
+            model=model_name,
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             **kwargs
         )
     elif ollama_api_keys_cycle is not None:
         llm = create_ollama_model(
-            model="gpt-oss:120b-cloud",
+            model=model_name,
             base_url="https://ollama.com",
             headers={"Authorization": f"Bearer {next(ollama_api_keys_cycle)}"},
             **kwargs
         )
     else:
         llm = create_ollama_model(
-            model="phi3",
+            model=model_name,
             **kwargs
         )
     return llm 
@@ -83,7 +90,7 @@ def create_default_ragas_model_iterator():
         logger.info("Running with Gemini...")
         client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
         models.append(create_ragas_model(
-            "gemini-3.1-flash-lite-preview",
+            model_name,
             provider="google",
             client=client
         ))
@@ -91,12 +98,12 @@ def create_default_ragas_model_iterator():
     elif len(ollama_api_keys) > 0:
         logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found)...")
         for key in ollama_api_keys:
-            client = OpenAI(
+            client = AsyncOpenAI(
                 api_key=key, 
                 base_url="https://ollama.com/v1"
             )
             models.append(create_ragas_model(
-                "gpt-oss:120b-cloud", 
+                model_name, 
                 provider="openai", 
                 client=client,                  
                 max_tokens=4096, 
@@ -110,10 +117,10 @@ def create_default_ragas_model_iterator():
 
     else:
         logger.info("Running with Ollama...")
-        client = OpenAI(
+        client = AsyncOpenAI(
             api_key="ollama", 
             base_url="http://localhost:11434/v1"
         )
-        models.append(create_ragas_model("phi3", provider="openai", client=client))
+        models.append(create_ragas_model(model_name, provider="openai", client=client))
 
     return itertools.cycle(models)

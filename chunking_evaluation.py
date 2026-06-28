@@ -1,7 +1,8 @@
 import csv
+import asyncio
+import pandas as pd
 from dataset.dataset import load_dataset
 from tabulate import tabulate
-from datasets import Dataset
 from langchain_community.vectorstores import Chroma
 from chunking.doc_cleaner import clean_doc
 
@@ -11,12 +12,14 @@ from utils.my_log import logger, mdc
 
 from langchain_ollama import OllamaEmbeddings
 
-from ragas import evaluate
-from utils.model_factories import create_default_ragas_model_iterator, create_default_model
-from ragas.metrics._context_precision import ContextPrecision
-from ragas.metrics._context_recall import ContextRecall
-from ragas.metrics._context_entities_recall import ContextEntityRecall
-from ragas.metrics._faithfulness import Faithfulness
+from ragas import experiment, Dataset
+from utils.model_factories import model_name, create_default_ragas_model_iterator, create_default_model
+from ragas.metrics.collections import (
+    Faithfulness,
+    ContextPrecision,
+    ContextEntityRecall,
+    ContextRecall
+)
 
 from chunking.chunk_fixed_length import run_fixed_size_chunking
 from chunking.chunk_fixed_length_with_overlap import run_overlapping_chunking
@@ -57,8 +60,11 @@ chunking_strategies = {
 }
 
 # Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale
-embeddings = OllamaEmbeddings(model='qwen3-embedding:0.6b')
-#embeddings = OllamaEmbeddings(model="mxbai-embed-large")
+embeddings_model_name = 'snowflake-arctic-embed2'
+#embeddings_model_name = 'qwen3-embedding:0.6b'
+#embeddings_model_name = 'mxbai-embed-large'
+
+embeddings = OllamaEmbeddings(model=embeddings_model_name)
 llm_iterator = create_default_ragas_model_iterator()
 
 def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
@@ -94,8 +100,9 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     dataset["retrieved_contexts"] = contexts
     return dataset
 
-def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
-    
+async def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
+    experiment_name = f"{model_name}_{embeddings_model_name}_{name.lower().replace(" ", "-")}_{"EN" if is_eng else "IT"}"
+
     if chunking_function == None:
         dataset = retrieve_pageindex_dataset(page_index_doc_id, dataset)
     else:
@@ -104,7 +111,7 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
     # Lo usa solo la faithfulness:
     dataset["response"] = []
     answer_llm = create_default_model()
-    for i in range(len(dataset["question"])):
+    for i in tqdm(range(len(dataset["question"])), desc="Generating answers"):
         search_prompt = f"""
         Answer only based on provided context.
         Question: {dataset["question"][i]}
@@ -114,17 +121,51 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
         dataset["response"].append(answer)
     dataset["answer"] = dataset["response"]
 
+    @experiment()
+    async def run_rag_evaluation(row):
+        cp_score = await ContextPrecision(llm=next(llm_iterator)).ascore(
+            user_input=row["user_input"], 
+            reference=row["reference"],
+            retrieved_contexts=row["retrieved_contexts"],
+        )
+        cr_score = await ContextRecall(llm=next(llm_iterator)).ascore(
+            user_input=row["user_input"], 
+            retrieved_contexts=row["retrieved_contexts"],
+            reference=row["reference"],
+        )
+        cer_score = await ContextEntityRecall(llm=next(llm_iterator)).ascore(
+            reference=row["reference"], 
+            retrieved_contexts=row["retrieved_contexts"],
+        )
+        f_score = await Faithfulness(llm=next(llm_iterator)).ascore(
+            user_input=row["user_input"],
+            response=row["response"],
+            retrieved_contexts=row["retrieved_contexts"],
+        )
+        logger.info(cp_score)
+        logger.info(cr_score)
+        logger.info(cer_score)
+        logger.info(f_score)
+        
+        return {
+            **row,
+            "experiment_name": experiment_name,
+            "context_precision": cp_score.value,
+            "context_recall": cr_score.value,
+            "context_entity_recall": cer_score.value,
+            "faithfulness": f_score.value
+        }
+
     # Valutazione
-    dataset_finale = Dataset.from_dict(dataset)
-    risultato = evaluate(
-        dataset_finale, 
-        embeddings=embeddings,
-        metrics=[
-            ContextPrecision(llm=next(llm_iterator)), 
-            ContextRecall(llm=next(llm_iterator)), 
-            ContextEntityRecall(llm=next(llm_iterator)), 
-            Faithfulness(llm=next(llm_iterator)),
-        ], 
+    dataset_finale =  Dataset(
+        name=experiment_name, 
+        backend="local/csv", 
+        root_dir=".",
+        data=pd.DataFrame(dataset).to_dict(orient="records")
+    )
+    risultato = await run_rag_evaluation.arun(
+        dataset=dataset_finale,
+        name=experiment_name,
     )
 
     logger.info(risultato)
@@ -134,34 +175,40 @@ def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng
             df['context_entity_recall'].mean(), \
             df['faithfulness'].mean()
 
-with logging_redirect_tqdm(loggers=[logger]):
-    for (file_name, page_index_doc_id) in tqdm(files, desc="Files"):
-        with mdc(file_name=file_name):
-            logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
-            raw_text = clean_doc(file_name)
-            is_eng = 'EN' in file_name
+async def evaluate_file(file_name, page_index_doc_id):
+    logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
+    raw_text = clean_doc(file_name)
+    is_eng = 'EN' in file_name
 
-            if is_eng:
-                golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched_EN.yaml")
-            else:
-                golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
+    if is_eng:
+        golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched_EN.yaml")
+    else:
+        golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
 
-            # Esegui benchmark
-            table_data = []
-            for name, chunking_function in tqdm(chunking_strategies.items(), desc="Chunking strategies"):
-                with mdc(method=name):
-                    logger.info(f"Metodo {name}...")
-                    try:
-                        precision, recall, entity_recall, faithfulness = evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
-                        table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}"])
-                    except Exception as e:
-                        logger.exception("Failed, skipping")
+    # Esegui benchmark
+    table_data = []
+    for name, chunking_function in tqdm(chunking_strategies.items(), desc="Chunking strategies"):
+        with mdc(method=name):
+            logger.info(f"Metodo {name}...")
+            try:
+                precision, recall, entity_recall, faithfulness = await evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
+                table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}"])
+            except Exception as e:
+                logger.exception("Failed, skipping")
 
-            headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness"]
-            tqdm.write("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+    headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness"]
+    tqdm.write("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
-            with open(file_name + '.csv', 'w', newline='') as csvfile:
-                csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-                csvwriter.writerow(headers)
-                for row in table_data:
-                    csvwriter.writerow(row)
+    with open(file_name + '.csv', 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+        csvwriter.writerow(headers)
+        for row in table_data:
+            csvwriter.writerow(row)
+
+async def main():
+    with logging_redirect_tqdm(loggers=[logger]):
+        for (file_name, page_index_doc_id) in tqdm(files, desc="Files"):
+            with mdc(file_name=file_name):
+                await evaluate_file(file_name, page_index_doc_id)
+
+asyncio.run(main())
