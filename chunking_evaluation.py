@@ -101,7 +101,9 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     return dataset
 
 async def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
-    experiment_name = f"{model_name}_{embeddings_model_name}_{name.lower().replace(" ", "-")}_{"EN" if is_eng else "IT"}"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    experiment_name = f"{timestamp}_{model_name}_{embeddings_model_name}_{name.lower().replace(" ", "-")}_{"EN" if is_eng else "IT"}"
+    experiment_name = experiment_name.replace(":", "-").replace("/", "-")
 
     if chunking_function == None:
         dataset = retrieve_pageindex_dataset(page_index_doc_id, dataset)
