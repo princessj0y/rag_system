@@ -1,16 +1,18 @@
 import csv
 import asyncio
 import pandas as pd
-from dataset.dataset import load_dataset
+from datetime import datetime
 from tabulate import tabulate
-from langchain_community.vectorstores import Chroma
 from chunking.doc_cleaner import clean_doc
+from dataset.dataset import load_dataset
+from langchain_community.vectorstores import Chroma
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from utils.my_log import logger, mdc
 
 from langchain_ollama import OllamaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from ragas import experiment, Dataset
 from utils.model_factories import model_name, create_default_ragas_model_iterator, create_default_model
@@ -59,12 +61,17 @@ chunking_strategies = {
     "PageIndex": None,
 }
 
-# Assicurati di aver fatto 'ollama pull nomic-embed-text' nel terminale
-embeddings_model_name = 'snowflake-arctic-embed2'
+# Per i modelli Ollama, assicurati di aver fatto 'ollama pull <modello>' nel terminale
+embeddings_model_name = 'dlicari/Italian-Legal-BERT'
+#embeddings_model_name = 'snowflake-arctic-embed2'
 #embeddings_model_name = 'qwen3-embedding:0.6b'
 #embeddings_model_name = 'mxbai-embed-large'
 
-embeddings = OllamaEmbeddings(model=embeddings_model_name)
+if embeddings_model_name == 'dlicari/Italian-Legal-BERT':
+    embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
+else:
+    embeddings = OllamaEmbeddings(model=embeddings_model_name)
+
 llm_iterator = create_default_ragas_model_iterator()
 
 def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
