@@ -3381,7 +3381,9 @@ dependencies = [
     { name = "rapidfuzz" },
     { name = "sentence-transformers" },
     { name = "tabulate" },
+    { name = "torch" },
     { name = "tqdm" },
+    { name = "transformers" },
 ]
 
 [package.metadata]
@@ -3415,7 +3417,9 @@ requires-dist = [
     { name = "rapidfuzz", specifier = ">=3.14.5" },
     { name = "sentence-transformers", specifier = ">=5.4.1" },
     { name = "tabulate", specifier = ">=0.10.0" },
+    { name = "torch", specifier = ">=2.11.0" },
     { name = "tqdm", specifier = ">=4.67.3" },
+    { name = "transformers", specifier = ">=5.7.0" },
 ]
 
 [[package]]

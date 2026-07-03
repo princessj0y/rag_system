@@ -59,12 +59,14 @@ chunking_strategies = {
 }
 
 # Per i modelli Ollama, assicurati di aver fatto 'ollama pull <modello>' nel terminale
-embeddings_model_name = 'dlicari/Italian-Legal-BERT'
+#embeddings_model_name = 'dlicari/Italian-Legal-BERT'
 #embeddings_model_name = 'snowflake-arctic-embed2'
 #embeddings_model_name = 'qwen3-embedding:0.6b'
+#embeddings_model_name = 'nomic-embed-text'
 #embeddings_model_name = 'mxbai-embed-large'
+embeddings_model_name = 'nlpaueb/bert-base-uncased-eurlex'
 
-if embeddings_model_name == 'dlicari/Italian-Legal-BERT':
+if embeddings_model_name == 'dlicari/Italian-Legal-BERT' or embeddings_model_name == 'nlpaueb/bert-base-uncased-eurlex':
     from langchain_huggingface import HuggingFaceEmbeddings
     embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
 else:
