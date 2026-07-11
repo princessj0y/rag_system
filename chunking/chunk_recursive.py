@@ -6,13 +6,17 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def run_recursive_chunking(raw_text, chunk_size=1200, overlap=150, is_eng = False):
     
+    if is_eng:
+        separators=["\nTITLE ", "\nCHAPTER ", "\nSection ", "\nArticle ", "\n\n", "\n", " "]
+    else:
+        separators=["\nTITOLO ", "\nCAPITOLO ", "\nSezione ", "\nArticolo ", "\n\n", "\n", " "]
+
     # Initialize the Recursive Splitter
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,
-        length_function=len,
-        # The Waterfall: Paragraphs -> Line breaks -> Sentences -> Words -> Characters
-        separators=["\n\n", "\n", ". ", " ", ""]
+        length_function=len,     
+        separators=separators
     )
     
     # Create the chunks
@@ -20,9 +24,7 @@ def run_recursive_chunking(raw_text, chunk_size=1200, overlap=150, is_eng = Fals
         
     return chunks
 
-# --- EXECUTION ---
 if __name__ == "__main__":
-    # Make sure these paths match your folder structure!
     file_en = "./test/CELEX_32006L0054_EN_TXT.pdf"
     file_it = "./test/CELEX_32006L0054_IT_TXT.pdf"
 

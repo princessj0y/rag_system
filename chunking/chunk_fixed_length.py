@@ -5,7 +5,7 @@ from .doc_cleaner import clean_doc
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
-def run_fixed_size_chunking(raw_text, chunk_size=500, is_eng = False):   
+def run_fixed_size_chunking(raw_text, chunk_size=600, is_eng = False):   
     # Set NLTK language
     lang = "english" if is_eng else "italian"
  

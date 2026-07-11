@@ -5,7 +5,13 @@ from .doc_cleaner import clean_doc
 nltk.download('punkt')
 nltk.download('punkt_tab') 
 
-def run_overlapping_chunking(raw_text, chunk_size=500, overlap=100, is_eng = False):
+def run_overlapping_chunking(raw_text, chunk_size=None, overlap=None, is_eng = False):
+    # EN version is smaller due to the fact that the english one is shorter in words
+    if chunk_size is None:
+        chunk_size = 500 if is_eng else 600
+    if overlap is None:
+        overlap = 100 if is_eng else 120
+
     # Overlap cannot be larger than the chunk itself
     if overlap >= chunk_size:
         raise ValueError("Overlap must be strictly less than chunk_size")
