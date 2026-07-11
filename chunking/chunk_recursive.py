@@ -1,11 +1,8 @@
 import pandas # fixes pydantic segfault
 
-import os
-from .doc_cleaner import clean_doc
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 def run_recursive_chunking(raw_text, chunk_size=1200, overlap=150, is_eng = False):
-    
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     if is_eng:
         separators=["\nTITLE ", "\nCHAPTER ", "\nSection ", "\nArticle ", "\n\n", "\n", " "]
     else:
@@ -25,6 +22,9 @@ def run_recursive_chunking(raw_text, chunk_size=1200, overlap=150, is_eng = Fals
     return chunks
 
 if __name__ == "__main__":
+    import os
+    from .doc_cleaner import clean_doc
+
     file_en = "./test/CELEX_32006L0054_EN_TXT.pdf"
     file_it = "./test/CELEX_32006L0054_IT_TXT.pdf"
 

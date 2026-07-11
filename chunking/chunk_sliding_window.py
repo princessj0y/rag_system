@@ -1,4 +1,3 @@
-from .doc_cleaner import clean_doc
 
 def run_sliding_window(raw_text, window_size=150, overlap=50, is_eng = False):    
     # Split the document into a list of whole words
@@ -27,6 +26,8 @@ def run_sliding_window(raw_text, window_size=150, overlap=50, is_eng = False):
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    from .doc_cleaner import clean_doc
+
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     window_size = 150
     overlap = 50

@@ -1,12 +1,5 @@
 import pandas # fixes pydantic segfault
-
-import os
-import json
-from tqdm import tqdm
-from .doc_cleaner import clean_doc
 from utils.my_log import logger
-from utils.model_factories import create_model_by_name
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # --- PROMPTS ---
 system_prompt_en = "You are a JSON generator. Output ONLY raw JSON. Use the SAME LANGUAGE as the text to analyze for all values. No intro, no outro, no explanation."
@@ -38,6 +31,8 @@ prompt_it = """
 # --- CONFIGURAZIONE OLLAMA ---
 def generate_agentic_metadata(llm, text, en):
     """L'Agente analizza il chunk e crea Titolo e Riassunto."""
+    import json
+
     if en:
         prompt = prompt_en.format(text = text[:1000], text_preview = text[:20])
     else:
@@ -63,6 +58,9 @@ def generate_agentic_metadata(llm, text, en):
 
 # --- 2. ESTRAZIONE E CHUNKING ---
 def run_agentic_enrich_chunking(raw_text, model=None, is_eng=False):
+    from tqdm import tqdm
+    from utils.model_factories import create_model_by_name
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
     
     if is_eng:
         system = system_prompt_en
@@ -105,6 +103,8 @@ def run_agentic_enrich_chunking_gpt_oss(pdf_path, is_eng):
     return run_agentic_enrich_chunking('gpt-oss:120b-cloud', pdf_path, is_eng) 
 
 if __name__ == "__main__":
+    from .doc_cleaner import clean_doc
+
     model = 'gpt-oss:120b-cloud'
     FILE_NAME = "CELEX_32006L0054_EN_TXT.pdf"
     raw_text = clean_doc(FILE_NAME)

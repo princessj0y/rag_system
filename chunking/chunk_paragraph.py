@@ -1,4 +1,3 @@
-from .doc_cleaner import clean_doc
 
 def run_paragraph_chunking(raw_text, is_eng = False):
     
@@ -18,6 +17,8 @@ def run_paragraph_chunking(raw_text, is_eng = False):
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    from .doc_cleaner import clean_doc
+    
     file_to_analyze = "./test/CELEX_32006L0054_IT_TXT.pdf"
     raw_text = clean_doc(file_to_analyze)
     chunks = run_paragraph_chunking(raw_text)

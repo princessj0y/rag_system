@@ -1,11 +1,11 @@
 import nltk
-from nltk.tokenize import word_tokenize
-from .doc_cleaner import clean_doc
 
 nltk.download('punkt')
 nltk.download('punkt_tab') 
 
 def run_overlapping_chunking(raw_text, chunk_size=None, overlap=None, is_eng = False):
+    from nltk.tokenize import word_tokenize
+
     # EN version is smaller due to the fact that the english one is shorter in words
     if chunk_size is None:
         chunk_size = 500 if is_eng else 600
@@ -26,6 +26,8 @@ def run_overlapping_chunking(raw_text, chunk_size=None, overlap=None, is_eng = F
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    from .doc_cleaner import clean_doc
+    
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     chunk_size=500
     overlap=100

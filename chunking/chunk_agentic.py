@@ -1,11 +1,5 @@
 import pandas # fixes pydantic segfault
-
-import json
-from tqdm import tqdm
-from .doc_cleaner import clean_doc
 from utils.my_log import logger
-from utils.model_factories import create_model_by_name
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def agentic_chunk_block(llm, text_block):
     """The Agent: Asks Ollama to logically split a block of text."""
@@ -28,6 +22,7 @@ def agentic_chunk_block(llm, text_block):
         ]
     }}
     """
+    import json
     
     try:
         response = llm.invoke(prompt).text
@@ -39,6 +34,10 @@ def agentic_chunk_block(llm, text_block):
         return [text_block]
 
 def run_agentic_chunking(raw_text, model_name=None, is_eng = False):
+    from tqdm import tqdm
+    from utils.model_factories import create_model_by_name
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     logger.info("Pre-chunking text to feed the Agent...")
     # The Pre-Chunker (creates digestible blocks for the LLM)
     pre_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=0)
@@ -64,6 +63,8 @@ def run_agentic_chunking(raw_text, model_name=None, is_eng = False):
 
 # --- EXECUTION ---
 if __name__ == "__main__": 
+    from .doc_cleaner import clean_doc
+
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     raw_text = clean_doc(file_to_analyze)
 

@@ -1,8 +1,8 @@
-from .doc_cleaner import clean_doc
-from utils.model_factories import default_embeddings
-from langchain_experimental.text_splitter import SemanticChunker
 
 def run_semantic_chunking(raw_text, threshold, is_eng = False):
+    from utils.model_factories import default_embeddings
+    from langchain_experimental.text_splitter import SemanticChunker
+
     text_splitter = SemanticChunker(
         default_embeddings, 
         breakpoint_threshold_type="percentile",
@@ -29,6 +29,8 @@ def run_semantic_chunking_90(raw_text, is_eng = False):
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    from .doc_cleaner import clean_doc
+    
     # The whole numbers you want to test
     percentiles_to_test = [70, 75, 80, 85, 90, 95]
     #file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"

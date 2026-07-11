@@ -1,11 +1,11 @@
 import nltk
-from nltk.tokenize import sent_tokenize
-from .doc_cleaner import clean_doc 
 
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
 def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1, is_eng = False):    
+    from nltk.tokenize import sent_tokenize
+    
     # Set NLTK language
     lang = "english" if is_eng else "italian"
     
@@ -28,6 +28,8 @@ def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    from .doc_cleaner import clean_doc 
+
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     
     print(f"Cleaning {file_to_analyze}...")
