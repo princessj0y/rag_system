@@ -68,8 +68,10 @@ def retrieve_chunking_dataset(
     dataset, 
     persist_dir="./chroma_eval_cache"
 ):
-    logger.info(f"Targeting persistent collection: {experiment_name}")
     from langchain_chroma import Chroma
+    from langchain_core.documents import Document
+
+    logger.info(f"Targeting persistent collection: {experiment_name}")
     vectorstore = Chroma(
         collection_name=experiment_name,
         embedding_function=default_embeddings,
@@ -80,9 +82,21 @@ def retrieve_chunking_dataset(
     if vectorstore._collection.count() == 0:
         logger.info(f"Collection is empty")
         logger.info(f"Performing chunking...")
-        chunks = chunking_function(raw_text, is_eng=is_eng)
+        raw_chunks = chunking_function(raw_text, is_eng=is_eng)
+
+        processed_docs = []
+        for chunk in raw_chunks:
+            if isinstance(chunk, str):
+                # Wrap old string chunks in a Document
+                processed_docs.append(Document(page_content=chunk, metadata={}))
+            else:
+                # CHROMA FIX: Serialize the list metadata into a string
+                if "heading_path" in chunk.metadata and isinstance(chunk.metadata["heading_path"], list):
+                    chunk.metadata["heading_path"] = " > ".join(chunk.metadata["heading_path"])
+                processed_docs.append(chunk)
+
         logger.info(f"Performing embedding...")
-        vectorstore.add_texts(texts=chunks)
+        vectorstore.add_documents(documents=processed_docs)
     else:
         logger.info(f"Found {vectorstore._collection.count()} chunks! Skipping compute.")
 

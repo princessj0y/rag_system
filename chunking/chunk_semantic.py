@@ -10,7 +10,7 @@ def run_semantic_chunking(raw_text, threshold, is_eng = False):
     )
         
     documents = text_splitter.create_documents([raw_text])
-    return [d.page_content for d in documents]
+    return documents
 
 def run_semantic_chunking_70(raw_text, is_eng = False):
     return run_semantic_chunking(raw_text, 70, is_eng)
@@ -39,7 +39,8 @@ if __name__ == "__main__":
     
     print("\n--- Semantic Percentile Grid Search ---")
     for p in percentiles_to_test:
-        chunks = run_semantic_chunking(raw_text, p)
+        documents = run_semantic_chunking(raw_text, p)
+        chunks = [d.page_content for d in documents]
 
         # Calculate average chunk size to see the impact
         avg_size = sum(len(c) for c in chunks) / len(chunks)
