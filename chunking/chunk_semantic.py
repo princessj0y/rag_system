@@ -1,14 +1,12 @@
 from .doc_cleaner import clean_doc
+from utils.model_factories import default_embeddings
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_huggingface import HuggingFaceEmbeddings
 
 def run_semantic_chunking(raw_text, threshold, is_eng = False):
-    embedder = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    
     text_splitter = SemanticChunker(
-        embedder, 
+        default_embeddings, 
         breakpoint_threshold_type="percentile",
-        breakpoint_threshold_amount=threshold  # Using whole numbers!
+        breakpoint_threshold_amount=threshold
     )
         
     documents = text_splitter.create_documents([raw_text])
@@ -33,6 +31,7 @@ def run_semantic_chunking_90(raw_text, is_eng = False):
 if __name__ == "__main__":
     # The whole numbers you want to test
     percentiles_to_test = [70, 75, 80, 85, 90, 95]
+    #file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     file_to_analyze = "./test/CELEX_32006L0054_IT_TXT.pdf"
     raw_text = clean_doc(file_to_analyze)
     

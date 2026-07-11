@@ -12,7 +12,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from utils.my_log import logger, mdc
 
 from ragas import experiment, Dataset
-from utils.model_factories import model_name, create_default_ragas_model_iterator, create_default_model
+from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings
 from ragas.metrics.collections import (
     Faithfulness,
     ContextPrecision,
@@ -58,21 +58,6 @@ chunking_strategies = {
     "PageIndex": None,
 }
 
-# Per i modelli Ollama, assicurati di aver fatto 'ollama pull <modello>' nel terminale
-#embeddings_model_name = 'dlicari/Italian-Legal-BERT'
-#embeddings_model_name = 'snowflake-arctic-embed2'
-#embeddings_model_name = 'qwen3-embedding:0.6b'
-#embeddings_model_name = 'nomic-embed-text'
-#embeddings_model_name = 'mxbai-embed-large'
-embeddings_model_name = 'nlpaueb/bert-base-uncased-eurlex'
-
-if embeddings_model_name == 'dlicari/Italian-Legal-BERT' or embeddings_model_name == 'nlpaueb/bert-base-uncased-eurlex':
-    from langchain_huggingface import HuggingFaceEmbeddings
-    embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
-else:
-    from langchain_ollama import OllamaEmbeddings
-    embeddings = OllamaEmbeddings(model=embeddings_model_name)
-
 llm_iterator = create_default_ragas_model_iterator()
 
 def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
@@ -88,7 +73,7 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
     # We add an ephemeral collection name so it clears/overwrites properly in memory.
     vectorstore = Chroma.from_texts(
         texts=chunks, 
-        embedding=embeddings,
+        embedding=default_embeddings,
         collection_name="temp_eval_collection"
     )
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})

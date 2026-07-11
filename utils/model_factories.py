@@ -24,12 +24,39 @@ ollama_api_keys_cycle = itertools.cycle(ollama_api_keys) if ollama_api_keys else
 for i in range(random.randint(0, len(ollama_api_keys))):
     next(ollama_api_keys_cycle)
 
+########################################################################
+#                               LLMs                                   #
+########################################################################
+
 if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
 elif ollama_api_keys_cycle is not None:
     model_name = "gpt-oss:120b-cloud"
 else:
     model_name = "phi3"
+
+########################################################################
+#                           EMBEDDINGS                                 #
+########################################################################
+
+# Per i modelli Ollama, assicurati di aver fatto 'ollama pull <modello>' nel terminale
+#embeddings_model_name = 'snowflake-arctic-embed2'
+embeddings_model_name = 'qwen3-embedding:0.6b'
+#embeddings_model_name = 'nomic-embed-text'
+#embeddings_model_name = 'mxbai-embed-large'
+
+#embeddings_model_name = 'dlicari/Italian-Legal-BERT'
+#embeddings_model_name = 'nlpaueb/bert-base-uncased-eurlex'
+#embeddings_model_name = 'all-MiniLM-L6-v2'
+
+if (embeddings_model_name == 'all-MiniLM-L6-v2'
+    or embeddings_model_name == 'dlicari/Italian-Legal-BERT'
+    or embeddings_model_name == 'nlpaueb/bert-base-uncased-eurlex'):
+    from langchain_huggingface import HuggingFaceEmbeddings
+    default_embeddings = HuggingFaceEmbeddings(model_name=embeddings_model_name)
+else:
+    from langchain_ollama import OllamaEmbeddings
+    default_embeddings = OllamaEmbeddings(model=embeddings_model_name)
 
 def create_ollama_model(model, system=None, **kwargs):
     # Initialize the callbacks list from kwargs or a new list
