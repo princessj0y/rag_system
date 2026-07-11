@@ -1,3 +1,4 @@
+import re
 import csv
 import asyncio
 import pandas as pd
@@ -5,7 +6,6 @@ from datetime import datetime
 from tabulate import tabulate
 from chunking.doc_cleaner import clean_doc
 from dataset.dataset import load_dataset
-from langchain_community.vectorstores import Chroma
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -60,48 +60,61 @@ chunking_strategies = {
 
 llm_iterator = create_default_ragas_model_iterator()
 
-def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
-    # Esegui il chunking
-    logger.info(f"Performing chunking...")
-    chunks = chunking_function(raw_text, is_eng=is_eng)
-
-    # Creiamo il database temporaneo con i TUOI chunk
-    logger.info(f"Creating temporary vector store using Chroma...")
-    contexts = []
-    
-    # Chroma accepts chunks and embeddings.
-    # We add an ephemeral collection name so it clears/overwrites properly in memory.
-    vectorstore = Chroma.from_texts(
-        texts=chunks, 
-        embedding=default_embeddings,
-        collection_name="temp_eval_collection"
+def retrieve_chunking_dataset(
+    experiment_name,
+    chunking_function, 
+    raw_text, 
+    is_eng, 
+    dataset, 
+    persist_dir="./chroma_eval_cache"
+):
+    logger.info(f"Targeting persistent collection: {experiment_name}")
+    from langchain_chroma import Chroma
+    vectorstore = Chroma(
+        collection_name=experiment_name,
+        embedding_function=default_embeddings,
+        persist_directory=persist_dir
     )
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
 
+    # Check if we already did the work
+    if vectorstore._collection.count() == 0:
+        logger.info(f"Collection is empty")
+        logger.info(f"Performing chunking...")
+        chunks = chunking_function(raw_text, is_eng=is_eng)
+        logger.info(f"Performing embedding...")
+        vectorstore.add_texts(texts=chunks)
+    else:
+        logger.info(f"Found {vectorstore._collection.count()} chunks! Skipping compute.")
+
+    # Set up the retriever
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
     logger.info(f"Evaluating...")
+    contexts = []
     for query in dataset["question"]:
         # Per ogni domanda, cerchiamo i 10 pezzi più simili tra i tuoi chunk
         docs = retriever.invoke(query)
         # Salviamo il testo dei pezzi trovati
         contexts.append([d.page_content for d in docs])
 
-    # Pulizia: Cancella la collezione per evitare che i chunk si mischino al prossimo ciclo
-    vectorstore.delete_collection()
-
     # Aggiungiamo i pezzi trovati al nostro dataset
     dataset["contexts"] = contexts
     dataset["retrieved_contexts"] = contexts
     return dataset
 
-async def evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    experiment_name = f"{timestamp}_{model_name}_{embeddings_model_name}_{name.lower().replace(" ", "-")}_{"EN" if is_eng else "IT"}"
-    experiment_name = experiment_name.replace(":", "-").replace("/", "-")
+async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, raw_text, is_eng, dataset):
+    experiment_name = f"{model_name}_{embeddings_model_name}_{chunking_name.lower().replace(" ", "-")}_{"EN" if is_eng else "IT"}"
+    # Replace anything that isn't alphanumeric, dash, or underscore with a dash
+    experiment_name = re.sub(r'[^a-zA-Z0-9_-]', '-', experiment_name)
+    # Strip leading/trailing punctuation and limit to 63 characters
+    experiment_name = experiment_name.strip('_-')[:63]
 
     if chunking_function == None:
         dataset = retrieve_pageindex_dataset(page_index_doc_id, dataset)
     else:
-        dataset = retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset)
+        dataset = retrieve_chunking_dataset(experiment_name, chunking_function, raw_text, is_eng, dataset)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    experiment_name = f"{timestamp}_{experiment_name}"
 
     # Lo usa solo la faithfulness:
     dataset["response"] = []

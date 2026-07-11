@@ -3,6 +3,7 @@ test/*.md
 test/*.csv
 test/*.png
 experiments/**
+chroma_eval_cache/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
