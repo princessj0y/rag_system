@@ -76,11 +76,11 @@ def retrieve_chunking_dataset(chunking_function, raw_text, is_eng, dataset):
         embedding=default_embeddings,
         collection_name="temp_eval_collection"
     )
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
 
     logger.info(f"Evaluating...")
     for query in dataset["question"]:
-        # Per ogni domanda, cerchiamo i 3 pezzi più simili tra i tuoi chunk
+        # Per ogni domanda, cerchiamo i 10 pezzi più simili tra i tuoi chunk
         docs = retriever.invoke(query)
         # Salviamo il testo dei pezzi trovati
         contexts.append([d.page_content for d in docs])
