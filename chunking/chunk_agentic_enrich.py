@@ -1,3 +1,5 @@
+import pandas # fixes pydantic segfault
+
 import os
 import json
 from tqdm import tqdm

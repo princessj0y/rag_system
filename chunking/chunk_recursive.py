@@ -1,3 +1,5 @@
+import pandas # fixes pydantic segfault
+
 import os
 from .doc_cleaner import clean_doc
 from langchain_text_splitters import RecursiveCharacterTextSplitter

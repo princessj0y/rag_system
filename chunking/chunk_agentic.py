@@ -1,4 +1,5 @@
-import os
+import pandas # fixes pydantic segfault
+
 import json
 from tqdm import tqdm
 from .doc_cleaner import clean_doc
