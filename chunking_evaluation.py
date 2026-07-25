@@ -24,6 +24,7 @@ from chunking.chunk_fixed_length import run_fixed_size_chunking
 from chunking.chunk_fixed_length_with_overlap import run_overlapping_chunking
 from chunking.chunk_paragraph import run_paragraph_chunking
 from chunking.chunk_recursive import run_recursive_chunking
+from chunking.chunk_hierarchical_legal import run_hierarchical_legal_chunking
 from chunking.chunk_hierarchical import run_hierarchical_chunking
 from chunking.chunk_semantic import run_semantic_chunking_70, run_semantic_chunking_75, run_semantic_chunking_80, run_semantic_chunking_85, run_semantic_chunking_90
 from chunking.chunk_sentence import run_advanced_sentence_chunking
@@ -34,7 +35,7 @@ from chunking.chunk_agentic_enrich import run_agentic_enrich_chunking
 from page_index.pageindex_retriever import retrieve_dataset as retrieve_pageindex_dataset
 
 files = [
-    #("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
+    ("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
     ("./test/CELEX_32006L0054_EN_TXT.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
 ]
 
@@ -45,7 +46,8 @@ chunking_strategies = {
     "Fixed Length Chunking With Overlap": run_overlapping_chunking,
     "Paragraph-based Chunking": run_paragraph_chunking,
     "Recursive Chunking": run_recursive_chunking,
-    "Hierarchical Legal Chunking": run_recursive_chunking,
+    "Hierarchical Legal Chunking": run_hierarchical_legal_chunking,
+    "Hierarchical Chunking": run_hierarchical_chunking,
     "Semantic Chunking 0.70": run_semantic_chunking_70,
     "Semantic Chunking 0.75": run_semantic_chunking_75,
     "Semantic Chunking 0.80": run_semantic_chunking_80,
