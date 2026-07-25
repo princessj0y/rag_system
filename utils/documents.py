@@ -110,14 +110,8 @@ def make_chunking_document_aware(chunking_function):
                 chunker_meta = chunk_item.metadata
 
             # Find positional overlap
-            chunk_start = full_text.find(chunk_text, search_start)
-            
-            # Fallback if the chunker heavily stripped whitespace
-            if chunk_start == -1: 
-                chunk_start = search_start 
-
-            chunk_end = chunk_start + len(chunk_text)
-            search_start = chunk_start + 1 
+            chunk_start, chunk_end = find_flexible_bounds(chunk_text, full_text, search_start)
+            search_start = chunk_end
 
             # Find overlapping documents
             overlapping_metas = []
@@ -136,6 +130,42 @@ def make_chunking_document_aware(chunking_function):
             final_docs.append(Document(page_content=chunk_text, metadata=merged_meta))
             
         return final_docs
+
+    import re
+
+    def find_flexible_bounds(chunk_text, full_text, search_start=0):
+        """
+        Finds the start and end index of a chunk in the full_text, 
+        even if the chunker modified whitespace, newlines, or stripped edges.
+        """
+        # Try the fast, exact match first
+        exact_idx = full_text.find(chunk_text, search_start)
+        if exact_idx != -1:
+            return exact_idx, exact_idx + len(chunk_text)
+
+        # Fallback: Whitespace-agnostic anchor matching
+        tokens = chunk_text.split()
+        if not tokens:
+            return search_start, search_start
+
+        # Grab up to the first 7 words and last 7 words to create unique anchors
+        start_tokens = tokens[:7]
+        end_tokens = tokens[-7:]
+
+        # \s* matches ANY whitespace (newlines, tabs, spaces, or nothing)
+        start_pattern = r'\s*'.join(re.escape(t) for t in start_tokens)
+        end_pattern = r'\s*'.join(re.escape(t) for t in end_tokens)
+
+        # Find where the chunk actually begins in the original text
+        start_match = re.search(start_pattern, full_text[search_start:])
+        chunk_start = search_start + start_match.start() if start_match else search_start
+
+        # Find where the chunk ends, searching from the start point
+        end_match = re.search(end_pattern, full_text[chunk_start:])
+        chunk_end = chunk_start + end_match.end() if end_match else chunk_start + len(chunk_text)
+
+        return chunk_start, chunk_end
+
     return wrapper
 
 def merge_metadata(metadata_list, blacklist={"detection_class_prob", "coordinates", "category"}):
