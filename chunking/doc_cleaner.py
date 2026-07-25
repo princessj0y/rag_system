@@ -1,5 +1,4 @@
 import os
-import yaml
 from pathlib import Path
 
 from utils.model_factories import create_model_by_name
@@ -7,11 +6,14 @@ from utils.model_factories import create_model_by_name
 from tqdm import tqdm
 from utils.my_log import logger
 
-def clean_doc(file_path, is_eng=False):
+def clean_doc(file_path, is_eng=None):
     """
     Accepts any file path, auto-detects its type, cleans noise, 
     and returns a list of LangChain Document objects using the modern 1.x loader.
     """
+
+    if is_eng is None:
+        is_eng = 'EN' in file_path
 
     # to-do: add case for excel/csv 
     if file_path.lower().endswith(('.png', '.jpg', 'jpeg', '.svg')):
@@ -19,21 +21,15 @@ def clean_doc(file_path, is_eng=False):
     else:
         clean_doc = clean_textful_doc(file_path, is_eng)
     
-    print(clean_doc)
     return clean_doc
 
-# Tell PyYAML to use block scalars (|) for multiline strings for ultimate readability
-def str_presenter(dumper, data):
-    if len(data.splitlines()) > 1:
-        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
-    
-yaml.add_representer(str, str_presenter)
 
 def clean_textful_doc(file_path, is_eng):
+    import yaml
     from langchain_unstructured import UnstructuredLoader
     from langchain_core.documents import Document
-    
+    from utils.documents import preserialize_docs, reconstruct_docs
+ 
     file_hash = get_file_hash(file_path)
 
     # Setup cache directory
@@ -49,9 +45,7 @@ def clean_textful_doc(file_path, is_eng):
     if cache_file.exists():
         logger.info(f"Cache hit! Loading parsed document from {cache_file}")
         with open(cache_file, 'r', encoding='utf-8') as f:
-            cached_data = yaml.full_load(f)
-        # Reconstruct LangChain Documents
-        docs = [Document(**doc_dict) for doc_dict in cached_data]
+            docs = reconstruct_docs(yaml.full_load(f))
     else:
         logger.info(f"Cache miss. Running Unstructured 'hi_res' on {file_path}...")
         loader = UnstructuredLoader(
@@ -68,17 +62,9 @@ def clean_textful_doc(file_path, is_eng):
         docs = loader.load()
         if not docs:
             docs = [ Document(page_content="", metadata={"source": file_path}) ]
-
-        # Langchain documents use Pydantic under the hood. 
-        # model_dump() works for v2, dict() for v1.
-        # Sanitize the dictionary to remove NumPy types and Tuples
-        docs_dict = sanitize_for_yaml([
-            doc.model_dump() if hasattr(doc, 'model_dump') else doc.dict() 
-            for doc in docs
-        ])
         
         with open(cache_file, 'w', encoding='utf-8') as f:
-            yaml.dump(docs_dict, f, allow_unicode=True, sort_keys=False)
+            yaml.dump(preserialize_docs(docs), f, allow_unicode=True, sort_keys=False)
         logger.info(f"Saved parsed output to {cache_file}")
 
     # Enrich images
@@ -110,6 +96,16 @@ def clean_textful_doc(file_path, is_eng):
         # Stuff the fragile HTML into the metadata
         doc.metadata["raw_payload"] = html_table
         doc.metadata["payload_type"] = "table_html"
+
+    # Double-tap the noise
+    # Unstructured's internal skip isn't 100% reliable, so we force-drop them here (especially headers)
+    ignored_categories = {"Header", "Footer", "PageNumber", "PageBreak"}
+    docs = [d for d in docs if d.metadata.get("category") not in ignored_categories]
+
+    # Save post-processed docs just for inspection
+    processed_file = cache_dir / "docs-postprocess.yaml"
+    with open(processed_file, 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(docs), f, allow_unicode=True, sort_keys=False)
 
     return docs
 
@@ -186,20 +182,3 @@ def get_file_hash(file_path):
         for chunk in iter(lambda: f.read(4096), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
-
-def sanitize_for_yaml(data):
-    """
-    Recursively converts NumPy types to native Python types and tuples to lists 
-    to ensure clean, safe YAML serialization.
-    """
-    if isinstance(data, dict):
-        return {k: sanitize_for_yaml(v) for k, v in data.items()}
-    elif isinstance(data, (list, tuple)):
-        return [sanitize_for_yaml(v) for v in data]
-    # Check for NumPy scalars (they have an .item() method that returns native python types)
-    elif hasattr(data, 'item') and callable(data.item):
-        try:
-            return data.item()
-        except Exception:
-            return data
-    return data

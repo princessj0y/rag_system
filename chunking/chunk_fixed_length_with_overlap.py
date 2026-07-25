@@ -1,9 +1,10 @@
 import nltk
+from utils.documents import make_chunking_document_aware
 
 nltk.download('punkt')
 nltk.download('punkt_tab') 
 
-def run_overlapping_chunking(raw_text, chunk_size=None, overlap=None, is_eng = False):
+def _run_overlapping_chunking(raw_text, chunk_size=None, overlap=None, is_eng = False):
     from nltk.tokenize import word_tokenize
 
     # EN version is smaller due to the fact that the english one is shorter in words
@@ -24,9 +25,14 @@ def run_overlapping_chunking(raw_text, chunk_size=None, overlap=None, is_eng = F
     chunks = [words[i:i + chunk_size] for i in range(0, len(words), chunk_size - overlap)]
     return [" ".join(chunk) for chunk in chunks]
 
+run_overlapping_chunking = make_chunking_document_aware(_run_overlapping_chunking)
+
 # --- EXECUTION ---
 if __name__ == "__main__":
+    import yaml
+    from pathlib import Path
     from .doc_cleaner import clean_doc
+    from utils.documents import preserialize_docs
     
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     chunk_size=500
@@ -38,8 +44,6 @@ if __name__ == "__main__":
     print(f"\n--- Analysis of {file_to_analyze} ---")
     print(f"Created {len(chunks)} chunks with size {chunk_size} and overlap {overlap}.")
     
-    # Print the first two chunks to see the overlap in action
-    for index, chunk in enumerate(chunks[:2], start=1):
-        print(f"\nChunk {index}:")
-        print(chunk)
-        print("-" * 30)
+    Path("tmp").mkdir(parents=True, exist_ok=True)    
+    with open("tmp/chunks-fixed-len-with-overlap.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)

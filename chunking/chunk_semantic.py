@@ -1,5 +1,6 @@
+from utils.documents import make_chunking_document_aware
 
-def run_semantic_chunking(raw_text, threshold, is_eng = False):
+def _run_semantic_chunking(raw_text, threshold, is_eng = False):
     from utils.model_factories import default_embeddings
     from langchain_experimental.text_splitter import SemanticChunker
 
@@ -11,6 +12,8 @@ def run_semantic_chunking(raw_text, threshold, is_eng = False):
         
     documents = text_splitter.create_documents([raw_text])
     return documents
+
+run_semantic_chunking = make_chunking_document_aware(_run_semantic_chunking)
 
 def run_semantic_chunking_70(raw_text, is_eng = False):
     return run_semantic_chunking(raw_text, 70, is_eng)
@@ -29,12 +32,19 @@ def run_semantic_chunking_90(raw_text, is_eng = False):
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    import yaml
+    from pathlib import Path
     from .doc_cleaner import clean_doc
+    from utils.documents import preserialize_docs
     
     # The whole numbers you want to test
-    percentiles_to_test = [70, 75, 80, 85, 90, 95]
+    #percentiles_to_test = [70, 75, 80, 85, 90, 95]
+    percentiles_to_test = [85]
+    
     #file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     file_to_analyze = "./test/CELEX_32006L0054_IT_TXT.pdf"
+    Path("tmp").mkdir(parents=True, exist_ok=True)
+
     raw_text = clean_doc(file_to_analyze)
     
     print("\n--- Semantic Percentile Grid Search ---")
@@ -46,3 +56,6 @@ if __name__ == "__main__":
         avg_size = sum(len(c) for c in chunks) / len(chunks)
             
         print(f"Percentile {p}: Created {len(chunks)} chunks. (Avg size: ~{int(avg_size)} chars)")
+
+        with open(f"tmp/chunks-semantic-{p}.yaml", 'w', encoding='utf-8') as f:
+            yaml.dump(preserialize_docs(documents), f, allow_unicode=True, sort_keys=False)

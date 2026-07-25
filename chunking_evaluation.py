@@ -6,6 +6,7 @@ from datetime import datetime
 from tabulate import tabulate
 from chunking.doc_cleaner import clean_doc
 from dataset.dataset import load_dataset
+from utils.documents import flatten_metadata_for_chroma
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -90,14 +91,8 @@ def retrieve_chunking_dataset(
 
         processed_docs = []
         for chunk in raw_chunks:
-            if isinstance(chunk, str):
-                # Wrap old string chunks in a Document
-                processed_docs.append(Document(page_content=chunk, metadata={}))
-            else:
-                # CHROMA FIX: Serialize the list metadata into a string
-                if "heading_path" in chunk.metadata and isinstance(chunk.metadata["heading_path"], list):
-                    chunk.metadata["heading_path"] = " > ".join(chunk.metadata["heading_path"])
-                processed_docs.append(chunk)
+            chunk.metadata = flatten_metadata_for_chroma(chunk.metadata)
+            processed_docs.append(chunk)
 
         logger.info(f"Performing embedding...")
         vectorstore.add_documents(documents=processed_docs)

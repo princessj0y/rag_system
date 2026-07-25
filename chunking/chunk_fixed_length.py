@@ -1,9 +1,10 @@
 import nltk
+from utils.documents import make_chunking_document_aware
 
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
-def run_fixed_size_chunking(raw_text, chunk_size=600, is_eng = False):
+def _run_fixed_size_chunking(raw_text, chunk_size=600, is_eng = False):
     from nltk.tokenize import word_tokenize
     
     # Set NLTK language
@@ -14,17 +15,24 @@ def run_fixed_size_chunking(raw_text, chunk_size=600, is_eng = False):
     chunks = [words[i:i + chunk_size] for i in range(0, len(words), chunk_size)]
     return [" ".join(chunk) for chunk in chunks]
 
+run_fixed_size_chunking = make_chunking_document_aware(_run_fixed_size_chunking)
+
 # --- EXECUTION ---
 if __name__ == "__main__":
+    import yaml
+    from pathlib import Path
     from .doc_cleaner import clean_doc
+    from utils.documents import preserialize_docs, flatten_metadata_for_chroma
 
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf" 
     raw_text = clean_doc(file_to_analyze)
     chunks = run_fixed_size_chunking(raw_text)
+
+    Path("tmp").mkdir(parents=True, exist_ok=True)    
+    with open("tmp/chunks-fixed-len.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)
     
-    # Print the chunks with labels
-    print(f"\n--- Analysis of {file_to_analyze} ---")
-    for index, chunk in enumerate(chunks, start=1):
-        print(f"Chunk {index}:")
-        print(chunk)
-        print("-" * 30) # Separator line for readability
+    for chunk in chunks:
+        chunk.metadata = flatten_metadata_for_chroma(chunk.metadata)
+    with open("tmp/chunks-fixed-len-flattened.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)
