@@ -61,33 +61,7 @@ def make_chunking_document_aware(chunking_function):
             category = doc.metadata.get("category", "")
             next_category = docs[i+1].metadata.get("category", "") if i + 1 < len(docs) else ""
             
-            # --- Context-Aware Whitespace Logic ---
-            if category == "ListItem" and next_category == "ListItem":
-                # Keep lists tightly packed
-                separator = "\n"
-                
-            elif category == "FigureCaption" and next_category in ("Image", "Table"):
-                # Bind captions tightly to the element they precede
-                separator = "\n"
-                
-            elif category in ("Image", "Table") and next_category == "FigureCaption":
-                # Bind captions tightly to the element they follow
-                separator = "\n"
-                
-            elif category == "CodeSnippet" and next_category == "CodeSnippet":
-                # OCR often splits code blocks; glue them back together
-                separator = "\n"
-                
-            elif category in ("Address", "EmailAddress") and next_category in ("Address", "EmailAddress"):
-                # Keep contact blocks together
-                separator = "\n"
-                
-            else:
-                # Titles, NarrativeText, Formulas, and default paragraph breaks
-                # \n\n allows standard chunkers to recognize logical breaks
-                separator = "\n\n"
-            
-            full_text += doc.page_content + separator
+            full_text += doc.page_content + pick_content_separator(category, next_category)
             end_idx = len(full_text)
             
             doc_spans.append((start_idx, end_idx, doc.metadata))
@@ -167,6 +141,27 @@ def make_chunking_document_aware(chunking_function):
         return chunk_start, chunk_end
 
     return wrapper
+
+def pick_content_separator(category, next_category):
+    # --- Context-Aware Whitespace Logic ---
+    if category == "ListItem" and next_category == "ListItem":
+        # Keep lists tightly packed
+        return "\n" 
+    elif category == "FigureCaption" and next_category in ("Image", "Table"):
+        # Bind captions tightly to the element they precede
+        return "\n"            
+    elif category in ("Image", "Table") and next_category == "FigureCaption":
+        # Bind captions tightly to the element they follow
+        return  "\n" 
+    elif category == "CodeSnippet" and next_category == "CodeSnippet":
+        # OCR often splits code blocks; glue them back together
+        return "\n" 
+    elif category in ("Address", "EmailAddress") and next_category in ("Address", "EmailAddress"):
+        # Keep contact blocks together
+        return "\n"
+    # Titles, NarrativeText, Formulas, and default paragraph breaks
+    # \n\n allows standard chunkers to recognize logical breaks
+    return "\n\n"
 
 def merge_metadata(metadata_list, blacklist={"detection_class_prob", "coordinates", "category"}):
     merged = {}

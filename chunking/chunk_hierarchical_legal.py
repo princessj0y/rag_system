@@ -12,44 +12,35 @@ Legal drafting (tecnica legislativa) follows a strict, predictable hierarchy:
                            global and DOES NOT reset. This allows lawyers to 
                            cite "Articolo 9" unambiguously.
 
-THE PROBLEM WITH PDFs & LANGCHAIN:
-PDF-to-Markdown extractors destroy this logic. They often flatten the hierarchy 
-by assigning all headings to the same level (e.g., `##`), which causes standard 
-splitters (like LangChain) to overwrite parent folders instead of nesting them. 
-Furthermore, PDF extractors often fail to recognize legal nodes entirely, leaving 
-them as isolated bold/italic paragraphs (e.g., `**Articolo 9**` on its own line).
+THE PROBLEM WITH STANDARD CHUNKERS:
+Generic recursive or token-based splitters destroy this logic. They blindly chop 
+text based on character limits, separating "Articolo 9" from its actual content, 
+and losing track of whether we are in "Titolo I" or "Titolo II". 
 
-THE AST SOLUTION:
-Instead of relying on regex replacements or generic Markdown splitters, this 
-parser uses an Abstract Syntax Tree (AST) via `markdown-it-py`. It scans the 
-token stream to:
-  A) Detect structural keywords (Titolo/Capo/Articolo) whether they are formatted 
-     as Markdown Headings (#) OR as isolated formatted paragraphs.
+THE UNSTRUCTURED ELEMENT SOLUTION:
+Instead of relying on regex replacements over a flattened string or building an 
+AST, this parser streams the pre-parsed Unstructured `Document` objects natively. 
+It processes the document element by element to:
+  A) Detect structural keywords (Titolo/Capo/Articolo) by scanning short `Title`, 
+     `NarrativeText`, or `UncategorizedText` elements.
   B) Maintain a persistent "legal state" tracking exactly which folder we are in.
-  C) Re-nest any generic Markdown sub-headings natively beneath the active Articolo.
-  D) Slice the original Markdown string using token line boundaries, perfectly 
-     preserving tables, bullet lists, and original text spacing in the chunk.
+  C) Buffer all elements (paragraphs, lists, tables) belonging to the active 
+     legal node, natively nesting any standard sub-titles beneath it.
+  D) Flush the buffer into a unified LangChain chunk whenever a new legal 
+     boundary is crossed, flawlessly merging and preserving all rich metadata 
+     (like HTML tables) in the process.
 ===============================================================================
 """
 
-def run_hierarchical_legal_chunking(md_text, is_eng=False):
+def run_hierarchical_legal_chunking(docs, is_eng=False):
     import re
-    from markdown_it import MarkdownIt
     from langchain_core.documents import Document
+    from utils.documents import merge_metadata, pick_content_separator
 
-    md = MarkdownIt()
-    tokens = md.parse(md_text)
-    lines = md_text.split("\n")
-    
-    chunks = []
-    
     # State tracking 
     current_legal = {"L1": None, "L2": None, "L3": None} # L1=Titolo, L2=Capo, L3=Articolo
-    current_md_headings = {} # Tracks standard markdown sub-headings by level
+    current_title = None # Tracks standard Unstructured Titles
     
-    last_path = []
-    last_boundary_line = 0
-
     # Dynamic language keywords
     legal_pattern = (r"^(TITLE|CHAPTER|ARTICLE|ART\.)\s+([A-Za-z0-9\-]+)" if is_eng 
                      else r"^(TITOLO|CAPO|ARTICOLO|ART\.)\s+([A-Za-z0-9\-]+)")
@@ -57,29 +48,51 @@ def run_hierarchical_legal_chunking(md_text, is_eng=False):
     l2_keys = ("CHAPTER",) if is_eng else ("CAPO",)
     l3_keys = ("ARTICLE", "ART.") if is_eng else ("ARTICOLO", "ART.")
 
-    def update_last_path():
+    def get_current_path():
         path = []
         if current_legal["L1"]: path.append(current_legal["L1"])
         if current_legal["L2"]: path.append(current_legal["L2"])
         if current_legal["L3"]: path.append(current_legal["L3"])
-        for lvl in sorted(current_md_headings.keys()):
-            path.append(current_md_headings[lvl])
+        if current_title: path.append(current_title)
         return path
 
-    def save_chunk(end_line):
-        if last_boundary_line < end_line:
-            content = "\n".join(lines[last_boundary_line:end_line]).strip()
-            if content:
-                chunks.append(Document(
-                    page_content=content,
-                    metadata={
-                        "heading_path": list(last_path),
-                        "level": len(last_path)
-                    }
-                ))
+    chunks = []
+    current_buffer = []
 
+    def save_chunk():
+        """Combines buffered docs into a single chunk and merges their metadata."""
+        if not current_buffer:
+            return
+            
+        # Context-aware text reconstruction for the chunk
+        text_parts = []
+        for i, d in enumerate(current_buffer):
+            category = d.metadata.get("category", "")
+            next_cat = current_buffer[i+1].metadata.get("category", "") if i + 1 < len(current_buffer) else ""
+
+            text_parts.append(d.page_content)
+            text_parts.append(pick_content_separator(category, next_cat))
+            
+        content = "".join(text_parts).strip()
+        
+        if content:
+            # Safely merge Unstructured metadata (tables, images, etc.)
+            unique_metas = list({id(d.metadata): d.metadata for d in current_buffer}.values())
+            merged_meta = merge_metadata(unique_metas)
+            
+            # Inject our legal hierarchy tracking
+            merged_meta["heading_path"] = get_current_path()
+            merged_meta["level"] = len(get_current_path())
+            
+            chunks.append(Document(page_content=content, metadata=merged_meta))
+            
+        current_buffer.clear()
+    
+    
     def process_legal_node(node_type, clean_text):
         """Helper to update the legal hierarchy state without duplication."""
+        nonlocal current_title
+
         if node_type in l1_keys:
             current_legal["L1"] = clean_text
             current_legal["L2"] = None
@@ -89,61 +102,59 @@ def run_hierarchical_legal_chunking(md_text, is_eng=False):
             current_legal["L3"] = None
         elif node_type in l3_keys:
             current_legal["L3"] = clean_text
-        
-        # Reset standard markdown sub-headings anytime a legal node is hit
-        current_md_headings.clear()
-
-    for i, token in enumerate(tokens):
-        
-        # 1. Handle Actual Markdown Headings (#, ##, ###)
-        if token.type == "heading_open":
-            start_line, end_line = token.map
-            save_chunk(start_line)
-            
-            inline_token = tokens[i+1]
-            raw_clean_text = inline_token.content.strip("*_ ")
-            level = int(token.tag[1])
-            
-            match = re.match(legal_pattern, raw_clean_text, re.IGNORECASE)
-            
-            if match:
-                node_type = match.group(1).upper()
-                process_legal_node(node_type, raw_clean_text)
-            else:
-                # Standard markdown heading logic (Sub-MD structure)
-                keys_to_remove = [k for k in current_md_headings.keys() if k >= level]
-                for k in keys_to_remove: del current_md_headings[k]
-                current_md_headings[level] = raw_clean_text
                 
-            last_path = update_last_path()
-            last_boundary_line = end_line
+        # Reset generic title anytime a hard legal boundary is crossed
+        current_title = None 
 
-        # 2. Handle Isolated Paragraphs (PDF quirks: **Articolo 9** on its own line)
-        elif token.type == "paragraph_open":
-            start_line, end_line = token.map
-            inline_token = tokens[i+1]
-            raw_clean_text = inline_token.content.strip("*_ ")
+    # Iterate through the Unstructured Elements
+    for doc in docs:
+        category = doc.metadata.get("category", "")
+        raw_text = doc.page_content.strip()
+        
+        # Check for legal headers in likely categories (skip long paragraphs)
+        if category in ("Title", "NarrativeText", "UncategorizedText") and len(raw_text) < 100:
+            match = re.match(legal_pattern, raw_text, re.IGNORECASE)
             
-            # Isolated legal node heuristic: Matches prefix, < 100 chars, single line
-            match = re.match(f"{legal_pattern}(.*)$", raw_clean_text, re.IGNORECASE)
-            
-            if match and len(raw_clean_text) < 100 and "\n" not in inline_token.content:
-                save_chunk(start_line)
+            # Ensure it's a standalone header, not a paragraph starting with "Article 9..."
+            if match and "\n" not in raw_text:
+                # A new legal section means we must close out the previous chunk
+                save_chunk()
                 
                 node_type = match.group(1).upper()
-                process_legal_node(node_type, raw_clean_text)
-                    
-                last_path = update_last_path()
-                last_boundary_line = end_line
+                process_legal_node(node_type, raw_text)
+                
+                # Add the legal header itself to the fresh buffer
+                current_buffer.append(doc)
+                continue
 
-    save_chunk(len(lines))
+        # If it's NOT a legal node but still a generic Unstructured Title
+        if category == "Title":
+            save_chunk() # Titles logically start a new structural section
+            current_title = raw_text
+            current_buffer.append(doc)
+            continue
+
+        # Standard content (NarrativeText, ListItems, Tables, Images)
+        current_buffer.append(doc)
+
+    # Final flush for the last section of the document
+    save_chunk()
     return chunks
 
 if __name__ == "__main__":
+    import yaml
+    from pathlib import Path
     from .doc_cleaner import clean_doc
+    from utils.documents import preserialize_docs
 
     #file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     file_to_analyze = "./test/CELEX_32006L0054_IT_TXT.pdf"
-    raw_text = clean_doc(file_to_analyze)
+    is_eng = 'EN' in file_to_analyze
 
-    run_hierarchical_legal_chunking(raw_text, 'EN' in file_to_analyze)
+    raw_text = clean_doc(file_to_analyze, is_eng)
+
+    chunks = run_hierarchical_legal_chunking(raw_text, is_eng)
+    
+    Path("tmp").mkdir(parents=True, exist_ok=True)    
+    with open("tmp/chunks-hierarchical-legal.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)
