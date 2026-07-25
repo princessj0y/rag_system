@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "cairosvg>=2.9.0",
     "chromadb>=1.5.9",
     "datasets>=4.8.4",
     "faiss-cpu>=1.13.2",
@@ -18,6 +19,7 @@ dependencies = [
     "langchain-huggingface>=1.2.2",
     "langchain-ollama>=1.1.0",
     "langchain-text-splitters>=1.1.1",
+    "langchain-unstructured>=1.0.1",
     "litellm>=1.83.10",
     "markdown-it-py>=4.0.0",
     "nltk>=3.9.4",
@@ -39,4 +41,5 @@ dependencies = [
     "torch>=2.11.0",
     "tqdm>=4.67.3",
     "transformers>=5.7.0",
+    "unstructured[pdf]>=0.24.1",
 ]
