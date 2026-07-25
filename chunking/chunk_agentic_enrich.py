@@ -1,5 +1,6 @@
 import pandas # fixes pydantic segfault
 from utils.my_log import logger
+from utils.documents import make_chunking_document_aware
 
 # --- PROMPTS ---
 system_prompt_en = "You are a JSON generator. Output ONLY raw JSON. Use the SAME LANGUAGE as the text to analyze for all values. No intro, no outro, no explanation."
@@ -46,8 +47,8 @@ def generate_agentic_metadata(llm, text, en):
 
         # Parse the non-parsed JSON string
         parsed_metadata = json.loads(response)
-        title = parsed_metadata.get("title", "N/A")
-        summary = parsed_metadata.get("summary", "N/A")
+        title = parsed_metadata.get("titolo_breve", "N/A")
+        summary = parsed_metadata.get("riassunto", "N/A")
 
     except json.JSONDecodeError as e:
         logger.exception(f"Failed to parse JSON")
@@ -57,7 +58,7 @@ def generate_agentic_metadata(llm, text, en):
     return title, summary
 
 # --- 2. ESTRAZIONE E CHUNKING ---
-def run_agentic_enrich_chunking(raw_text, model=None, is_eng=False):
+def run_agentic_enrich_chunking(docs, model=None, is_eng=False):
     from tqdm import tqdm
     from utils.model_factories import create_model_by_name
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -76,22 +77,25 @@ def run_agentic_enrich_chunking(raw_text, model=None, is_eng=False):
     )
 
     # Split iniziale (Recursive)
-    splitter = RecursiveCharacterTextSplitter(
+    # Wrap the split_text method so it handles the Unstructured Documents
+    document_aware_splitter = make_chunking_document_aware(RecursiveCharacterTextSplitter(
         chunk_size=1500,
         chunk_overlap=200,
         separators=["\nArticle ", "\n\n", ". "]
-    )
-    initial_chunks = splitter.split_text(raw_text)
-    
-    agentic_results = []
+    ).split_text)
+
+    chunks = document_aware_splitter(raw_text)
     
     # Ciclo Agentico: chiediamo a Ollama di "capire" ogni chunk
-    for i, chunk in enumerate(tqdm(initial_chunks, desc="Enriching chunks")):
-        title, summary = generate_agentic_metadata(llm, chunk, is_eng)
+    for chunk_doc in tqdm(chunks, desc="Enriching chunks"):
+        title, summary = generate_agentic_metadata(llm, chunk_doc.page_content, is_eng)
         # Create the enriched chunk
-        agentic_results.append(f"TITLE: {title}\nSUMMARY: {summary}\nCONTENT: {chunk}")
-        
-    return agentic_results
+        chunk_doc.page_content = f"TITLE: {title}\nSUMMARY: {summary}\nCONTENT: {chunk_doc.page_content}"
+        # Store the generated fields in the metadata
+        chunk_doc.metadata["generated_title"] = title
+        chunk_doc.metadata["generated_summary"] = summary
+
+    return chunks
     
 def run_agentic_enrich_chunking_llama3(pdf_path, is_eng):
     return run_agentic_enrich_chunking('llama3', pdf_path, is_eng)
@@ -103,23 +107,26 @@ def run_agentic_enrich_chunking_gpt_oss(pdf_path, is_eng):
     return run_agentic_enrich_chunking('gpt-oss:120b-cloud', pdf_path, is_eng) 
 
 if __name__ == "__main__":
+    import yaml
+    from pathlib import Path
     from .doc_cleaner import clean_doc
+    from utils.documents import preserialize_docs
 
     model = 'gpt-oss:120b-cloud'
-    FILE_NAME = "CELEX_32006L0054_EN_TXT.pdf"
-    raw_text = clean_doc(FILE_NAME)
+    FILE_NAME = "./test/CELEX_32006L0054_EN_TXT.pdf"
+    is_eng = 'EN' in FILE_NAME
+
+    raw_text = clean_doc(FILE_NAME, is_eng)
 
     # SAFETY: Only taking the first 3000 characters for the test
     # Remove the [:3000] if you want to process the whole document (Warning: Slow!)
     test_text = raw_text[:3000]
 
     logger.info(f"Avvio Agentic Chunking su {FILE_NAME}...")
-    risultati = run_agentic_enrich_chunking(test_text, model, 'EN' in FILE_NAME)
+    risultati = run_agentic_enrich_chunking(test_text, model, is_eng)
 
-    with open(f"analisi_agentic_{model}.txt", "w", encoding="utf-8") as f:
-        for item in risultati:
-            f.write(f"=== CHUNK {item['id']} ===\n")
-            f.write(f"ANALISI AGENTE:\n{item['ai_analysis']}\n")
-            f.write(f"TESTO ORIGINALE:\n{item['content']}\n\n")
+    Path("tmp").mkdir(parents=True, exist_ok=True)    
+    with open("tmp/chunks-agentic-enrich.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(risultati), f, allow_unicode=True, sort_keys=False)
 
-    print(f"Operazione completata! Controlla 'analisi_agentic_{model}.txt'")
+    print(f"Operazione completata! Controlla 'tmp/chunks-agentic-enrich.yaml'")
