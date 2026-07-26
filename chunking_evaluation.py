@@ -12,12 +12,15 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from utils.my_log import logger, mdc
 
 from ragas import experiment, Dataset
-from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings
+from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings, create_default_embedding_model_iterator
 from ragas.metrics.collections import (
     Faithfulness,
     ContextPrecision,
     ContextEntityRecall,
-    ContextRecall
+    ContextRecall,
+    NoiseSensitivity,
+    AnswerRelevancy,
+    AnswerCorrectness
 )
 
 from chunking.chunk_fixed_length import run_fixed_size_chunking
@@ -34,33 +37,36 @@ from chunking.chunk_agentic_enrich import run_agentic_enrich_chunking
 from page_index.pageindex_retriever import retrieve_dataset as retrieve_pageindex_dataset
 
 files = [
-    #("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
-    ("./test/CELEX_32006L0054_EN_TXT.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
+    ("./test/cross-ref/Kernel.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
+    # ("./test/cross-ref/Operating_system.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
+    # ("./test/cross-ref/Page_fault.pdf", "pi-cmn3p5efs00nhlfpka5hfeato")
 ]
 
 # Metodi di chunking
 # Keys are labels, Values are the actual function objects
 chunking_strategies = {
     "Fixed Length Chunking": run_fixed_size_chunking,
-    "Fixed Length Chunking With Overlap": run_overlapping_chunking,
-    "Paragraph-based Chunking": run_paragraph_chunking,
-    "Recursive Chunking": run_recursive_chunking,
-    "Hierarchical Legal Chunking": run_recursive_chunking,
-    "Semantic Chunking 0.70": run_semantic_chunking_70,
-    "Semantic Chunking 0.75": run_semantic_chunking_75,
-    "Semantic Chunking 0.80": run_semantic_chunking_80,
-    "Semantic Chunking 0.85": run_semantic_chunking_85,
-    "Semantic Chunking 0.90": run_semantic_chunking_90,
-    "Sentence-based Chunking": run_advanced_sentence_chunking,
-    "Sliding Window Chunking": run_sliding_window,
-    #"Agentic Chunking Phi3": process_agentic_phi3,
-    #"Agentic Chunking llama3": process_agentic_llama3,
-    "Agentic Chunking gpt-oss": run_agentic_chunking,
-    "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
-    "PageIndex": None,
+    # "Fixed Length Chunking With Overlap": run_overlapping_chunking,
+    # "Paragraph-based Chunking": run_paragraph_chunking,
+    # "Recursive Chunking": run_recursive_chunking,
+    # "Hierarchical Legal Chunking": run_recursive_chunking,
+    # "Semantic Chunking 0.70": run_semantic_chunking_70,
+    # "Semantic Chunking 0.75": run_semantic_chunking_75,
+    # "Semantic Chunking 0.80": run_semantic_chunking_80,
+    # "Semantic Chunking 0.85": run_semantic_chunking_85,
+    # "Semantic Chunking 0.90": run_semantic_chunking_90,
+    # "Sentence-based Chunking": run_advanced_sentence_chunking,
+    # "Sliding Window Chunking": run_sliding_window,
+    # #"Agentic Chunking Phi3": process_agentic_phi3,
+    # #"Agentic Chunking llama3": process_agentic_llama3,
+    # "Agentic Chunking gpt-oss": run_agentic_chunking,
+    # "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
+    # "PageIndex": None,
 }
 
 llm_iterator = create_default_ragas_model_iterator()
+embedding_iterator = create_default_embedding_model_iterator()
+current_embedding = next(embedding_iterator)
 
 def retrieve_chunking_dataset(
     experiment_name,
@@ -103,7 +109,7 @@ def retrieve_chunking_dataset(
         logger.info(f"Found {vectorstore._collection.count()} chunks! Skipping compute.")
 
     # Set up the retriever
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 10})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
     logger.info(f"Evaluating...")
     contexts = []
     for query in dataset["question"]:
@@ -111,7 +117,7 @@ def retrieve_chunking_dataset(
         docs = retriever.invoke(query)
         # Salviamo il testo dei pezzi trovati
         contexts.append([d.page_content for d in docs])
-
+    
     # Aggiungiamo i pezzi trovati al nostro dataset
     dataset["contexts"] = contexts
     dataset["retrieved_contexts"] = contexts
@@ -147,33 +153,87 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
 
     @experiment()
     async def run_rag_evaluation(row):
-        cp_score = await ContextPrecision(llm=next(llm_iterator)).ascore(
-            user_input=row["user_input"], 
-            reference=row["reference"],
-            retrieved_contexts=row["retrieved_contexts"],
-        )
-        cr_score = await ContextRecall(llm=next(llm_iterator)).ascore(
-            user_input=row["user_input"], 
-            retrieved_contexts=row["retrieved_contexts"],
-            reference=row["reference"],
-        )
-        cer_score = await ContextEntityRecall(llm=next(llm_iterator)).ascore(
-            reference=row["reference"], 
-            retrieved_contexts=row["retrieved_contexts"],
-        )
-        f_score = await Faithfulness(llm=next(llm_iterator)).ascore(
-            user_input=row["user_input"],
-            response=row["response"],
-            retrieved_contexts=row["retrieved_contexts"],
-        )
-        
+        cp_val = cr_val = cer_val = f_val = ns_val = ar_val = ac_val = None
+
+        try:
+            cp_score = await ContextPrecision(llm=next(llm_iterator)).ascore(
+                user_input=row["user_input"], 
+                reference=row["reference"],
+                retrieved_contexts=row["retrieved_contexts"]
+            )
+            cp_val = getattr(cp_score, 'value', cp_score)
+        except Exception as e:
+            logger.warning(f"ContextPrecision failed: {e}")
+
+        try:
+            cr_score = await ContextRecall(llm=next(llm_iterator)).ascore(
+                user_input=row["user_input"], 
+                retrieved_contexts=row["retrieved_contexts"],
+                reference=row["reference"]
+            )
+            cr_val = getattr(cr_score, 'value', cr_score)
+        except Exception as e:
+            logger.warning(f"ContextRecall failed: {e}")
+
+        try:
+            cer_score = await ContextEntityRecall(llm=next(llm_iterator)).ascore(
+                reference=row["reference"], 
+                retrieved_contexts=row["retrieved_contexts"]
+            )
+            cer_val = getattr(cer_score, 'value', cer_score)
+        except Exception as e:
+            logger.warning(f"ContextEntityRecall failed: {e}")
+
+        try:
+            f_score = await Faithfulness(llm=next(llm_iterator)).ascore(
+                user_input=row["user_input"],
+                response=row["response"],
+                retrieved_contexts=row["retrieved_contexts"],
+            )
+            f_val = getattr(f_score, 'value', f_score)
+        except Exception as e:
+            logger.warning(f"Faithfulness failed: {e}")
+
+        try:
+            ns_score = await NoiseSensitivity(llm=next(llm_iterator)).ascore(
+                user_input=row["user_input"],
+                response=row["response"],
+                reference=row["reference"],
+                retrieved_contexts=row["retrieved_contexts"],
+            )
+            ns_val = getattr(ns_score, 'value', ns_score)
+        except Exception as e:
+            logger.warning(f"NoiseSensitivity failed: {e}")
+
+        try:
+            ar_score = await AnswerRelevancy(llm=next(llm_iterator), embeddings=current_embedding).ascore(
+                user_input=row["user_input"],
+                response=row["response"]
+            )
+            ar_val = getattr(ar_score, 'value', ar_score)
+        except Exception as e:
+            logger.warning(f"AnswerRelevancy failed: {e}")
+
+        try:
+            ac_score = await AnswerCorrectness(llm=next(llm_iterator), embeddings=current_embedding).ascore(
+                user_input=row["user_input"],
+                response=row["response"],
+                reference=row["reference"]
+            )
+            ac_val = getattr(ac_score, 'value', ac_score)
+        except Exception as e:
+            logger.warning(f"AnswerCorrectness failed: {e}")
+
         return {
             **row,
             "experiment_name": experiment_name,
-            "context_precision": cp_score.value,
-            "context_recall": cr_score.value,
-            "context_entity_recall": cer_score.value,
-            "faithfulness": f_score.value
+            "context_precision": cp_val,
+            "context_recall": cr_val,
+            "context_entity_recall": cer_val,
+            "faithfulness": f_val,
+            "noise_sensitivity": ns_val,
+            "answer_relevancy": ar_val,
+            "answer_correctness": ac_val
         }
 
     # Valutazione
@@ -187,23 +247,27 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
         dataset=dataset_finale,
         name=experiment_name,
     )
+    risultato = [await run_rag_evaluation(row) for row in dataset_finale]
 
     logger.info(risultato)
-    df = risultato.to_pandas()
-    return df['context_precision'].mean(), \
-            df['context_recall'].mean(), \
-            df['context_entity_recall'].mean(), \
-            df['faithfulness'].mean()
+    # df = risultato.to_pandas()
+    df = df = pd.DataFrame(risultato)
+    return (
+            df['context_precision'].mean(), 
+            df['context_recall'].mean(), 
+            df['context_entity_recall'].mean(), 
+            df['faithfulness'].mean(), 
+            df['noise_sensitivity'].mean(), 
+            df['answer_relevancy'].mean(), 
+            df['answer_correctness'].mean()
+    )
 
 async def evaluate_file(file_name, page_index_doc_id):
     logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
     raw_text = clean_doc(file_name)
-    is_eng = 'EN' in file_name
+    is_eng = True #'EN' in file_name
 
-    if is_eng:
-        golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched_EN.yaml")
-    else:
-        golden_dataset = load_dataset("./dataset/direttiva_2006_54_REAL_enriched.yaml")
+    golden_dataset = load_dataset("./dataset/cross_referential_dataset.yaml")
 
     # Esegui benchmark
     table_data = []
@@ -211,12 +275,16 @@ async def evaluate_file(file_name, page_index_doc_id):
         with mdc(method=name):
             logger.info(f"Metodo {name}...")
             try:
-                precision, recall, entity_recall, faithfulness = await evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
-                table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}"])
+                precision, recall, entity_recall, faithfulness, noise_sensitivity, answer_relevancy, answer_correctness = await evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
+                table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}", f"{noise_sensitivity:.4f}", f"{answer_relevancy:.4f}", f"{answer_correctness:.4f}"])
+                if faithfulness > 0.75 or faithfulness:
+                    print("OK")
+                else:
+                    print("I'm unable to answer the question")
             except Exception as e:
                 logger.exception("Failed, skipping")
 
-    headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness"]
+    headers = ["Method", "Precision", "Recall","ContextEntitiesRecall", "Faithfullness", "NoiseSensitivty", "AnswerRelevancy", "AnswerCorrectness"]
     tqdm.write("\n" + tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
     with open(file_name + '.csv', 'w', newline='') as csvfile:
@@ -224,6 +292,7 @@ async def evaluate_file(file_name, page_index_doc_id):
         csvwriter.writerow(headers)
         for row in table_data:
             csvwriter.writerow(row)
+
 
 async def main():
     with logging_redirect_tqdm(loggers=[logger]):
