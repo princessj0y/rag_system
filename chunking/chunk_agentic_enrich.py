@@ -84,7 +84,7 @@ def run_agentic_enrich_chunking(docs, model=None, is_eng=False):
         separators=["\nArticle ", "\n\n", ". "]
     ).split_text)
 
-    chunks = document_aware_splitter(raw_text)
+    chunks = document_aware_splitter(docs)
     
     # Ciclo Agentico: chiediamo a Ollama di "capire" ogni chunk
     for chunk_doc in tqdm(chunks, desc="Enriching chunks"):
