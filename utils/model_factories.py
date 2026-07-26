@@ -134,15 +134,11 @@ def create_model_by_name(model, **kwargs):
             **kwargs
         )
     
-    else:
-        print("i'm local!")
-        return create_ollama_model(
-            model=model,
-            base_url="http://127.0.0.1:11434",
-            **kwargs
-        )
-    
-    return create_ollama_model(model=model, **kwargs)
+    return create_ollama_model(
+        model=model,
+        base_url="http://127.0.0.1:11434",
+        **kwargs
+    )
         
 def create_ragas_model(model, provider="openai", **kwargs):
     from ragas.llms import llm_factory

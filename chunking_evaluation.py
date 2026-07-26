@@ -38,8 +38,11 @@ from chunking.chunk_agentic_enrich import run_agentic_enrich_chunking
 from page_index.pageindex_retriever import retrieve_dataset as retrieve_pageindex_dataset
 
 files = [
-    ("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
-    ("./test/CELEX_32006L0054_EN_TXT.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
+    ("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri", 'ita', "./dataset/direttiva_2006_54_REAL_enriched.yaml"),
+    ("./test/CELEX_32006L0054_EN_TXT.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto", 'eng', "./dataset/direttiva_2006_54_REAL_enriched_EN.yaml"),
+    # ("./test/cross-ref/Kernel.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri", 'eng', "./dataset/cross_referential_dataset.yaml"),
+    # ("./test/cross-ref/Operating_system.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto", 'eng', "./dataset/cross_referential_dataset.yaml"),
+    # ("./test/cross-ref/Page_fault.pdf", "pi-cmn3p5efs00nhlfpka5hfeato", 'eng', "./dataset/cross_referential_dataset.yaml"),
 ]
 
 # Metodi di chunking
@@ -261,12 +264,11 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
             df['answer_correctness'].mean()
     )
 
-async def evaluate_file(file_name, page_index_doc_id):
+async def evaluate_file(file_name, page_index_doc_id, is_eng, dataset_path):
     logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
-    raw_text = clean_doc(file_name)
-    is_eng = True #'EN' in file_name
+    raw_text = clean_doc(file_name, is_eng)
 
-    golden_dataset = load_dataset("./dataset/cross_referential_dataset.yaml")
+    golden_dataset = load_dataset(dataset_path)
 
     # Esegui benchmark
     table_data = []
@@ -295,8 +297,8 @@ async def evaluate_file(file_name, page_index_doc_id):
 
 async def main():
     with logging_redirect_tqdm(loggers=[logger]):
-        for (file_name, page_index_doc_id) in tqdm(files, desc="Files"):
+        for (file_name, page_index_doc_id, language, dataset_path) in tqdm(files, desc="Files"):
             with mdc(file_name=file_name):
-                await evaluate_file(file_name, page_index_doc_id)
+                await evaluate_file(file_name, page_index_doc_id, (language == 'eng'), dataset_path)
 
 asyncio.run(main())
