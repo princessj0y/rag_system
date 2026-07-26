@@ -6,6 +6,7 @@ from datetime import datetime
 from tabulate import tabulate
 from chunking.doc_cleaner import clean_doc
 from dataset.dataset import load_dataset
+from utils.documents import flatten_metadata_for_chroma
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -27,6 +28,7 @@ from chunking.chunk_fixed_length import run_fixed_size_chunking
 from chunking.chunk_fixed_length_with_overlap import run_overlapping_chunking
 from chunking.chunk_paragraph import run_paragraph_chunking
 from chunking.chunk_recursive import run_recursive_chunking
+from chunking.chunk_hierarchical_legal import run_hierarchical_legal_chunking
 from chunking.chunk_hierarchical import run_hierarchical_chunking
 from chunking.chunk_semantic import run_semantic_chunking_70, run_semantic_chunking_75, run_semantic_chunking_80, run_semantic_chunking_85, run_semantic_chunking_90
 from chunking.chunk_sentence import run_advanced_sentence_chunking
@@ -37,31 +39,31 @@ from chunking.chunk_agentic_enrich import run_agentic_enrich_chunking
 from page_index.pageindex_retriever import retrieve_dataset as retrieve_pageindex_dataset
 
 files = [
-    ("./test/cross-ref/Kernel.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
-    # ("./test/cross-ref/Operating_system.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
-    # ("./test/cross-ref/Page_fault.pdf", "pi-cmn3p5efs00nhlfpka5hfeato")
+    ("./test/CELEX_32006L0054_IT_TXT.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri"),
+    ("./test/CELEX_32006L0054_EN_TXT.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto"),
 ]
 
 # Metodi di chunking
 # Keys are labels, Values are the actual function objects
 chunking_strategies = {
     "Fixed Length Chunking": run_fixed_size_chunking,
-    # "Fixed Length Chunking With Overlap": run_overlapping_chunking,
-    # "Paragraph-based Chunking": run_paragraph_chunking,
-    # "Recursive Chunking": run_recursive_chunking,
-    # "Hierarchical Legal Chunking": run_recursive_chunking,
-    # "Semantic Chunking 0.70": run_semantic_chunking_70,
-    # "Semantic Chunking 0.75": run_semantic_chunking_75,
-    # "Semantic Chunking 0.80": run_semantic_chunking_80,
-    # "Semantic Chunking 0.85": run_semantic_chunking_85,
-    # "Semantic Chunking 0.90": run_semantic_chunking_90,
-    # "Sentence-based Chunking": run_advanced_sentence_chunking,
-    # "Sliding Window Chunking": run_sliding_window,
-    # #"Agentic Chunking Phi3": process_agentic_phi3,
-    # #"Agentic Chunking llama3": process_agentic_llama3,
-    # "Agentic Chunking gpt-oss": run_agentic_chunking,
-    # "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
-    # "PageIndex": None,
+    "Fixed Length Chunking With Overlap": run_overlapping_chunking,
+    "Paragraph-based Chunking": run_paragraph_chunking,
+    "Recursive Chunking": run_recursive_chunking,
+    "Hierarchical Legal Chunking": run_hierarchical_legal_chunking,
+    "Hierarchical Chunking": run_hierarchical_chunking,
+    "Semantic Chunking 0.70": run_semantic_chunking_70,
+    "Semantic Chunking 0.75": run_semantic_chunking_75,
+    "Semantic Chunking 0.80": run_semantic_chunking_80,
+    "Semantic Chunking 0.85": run_semantic_chunking_85,
+    "Semantic Chunking 0.90": run_semantic_chunking_90,
+    "Sentence-based Chunking": run_advanced_sentence_chunking,
+    "Sliding Window Chunking": run_sliding_window,
+    #"Agentic Chunking Phi3": process_agentic_phi3,
+    #"Agentic Chunking llama3": process_agentic_llama3,
+    "Agentic Chunking gpt-oss": run_agentic_chunking,
+    "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
+    "PageIndex": None,
 }
 
 llm_iterator = create_default_ragas_model_iterator()
@@ -94,14 +96,8 @@ def retrieve_chunking_dataset(
 
         processed_docs = []
         for chunk in raw_chunks:
-            if isinstance(chunk, str):
-                # Wrap old string chunks in a Document
-                processed_docs.append(Document(page_content=chunk, metadata={}))
-            else:
-                # CHROMA FIX: Serialize the list metadata into a string
-                if "heading_path" in chunk.metadata and isinstance(chunk.metadata["heading_path"], list):
-                    chunk.metadata["heading_path"] = " > ".join(chunk.metadata["heading_path"])
-                processed_docs.append(chunk)
+            chunk.metadata = flatten_metadata_for_chroma(chunk.metadata)
+            processed_docs.append(chunk)
 
         logger.info(f"Performing embedding...")
         vectorstore.add_documents(documents=processed_docs)

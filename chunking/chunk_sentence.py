@@ -1,9 +1,10 @@
 import nltk
+from utils.documents import make_chunking_document_aware
 
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
-def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1, is_eng = False):    
+def _run_advanced_sentence_chunking(raw_text, sentences_per_chunk=4, overlap=1, is_eng = False):    
     from nltk.tokenize import sent_tokenize
     
     # Set NLTK language
@@ -26,9 +27,14 @@ def run_advanced_sentence_chunking(target_file, sentences_per_chunk=4, overlap=1
         
     return chunks
 
+run_advanced_sentence_chunking = make_chunking_document_aware(_run_advanced_sentence_chunking)
+
 # --- EXECUTION ---
 if __name__ == "__main__":
-    from .doc_cleaner import clean_doc 
+    import yaml
+    from pathlib import Path
+    from .doc_cleaner import clean_doc
+    from utils.documents import preserialize_docs
 
     file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     
@@ -37,3 +43,7 @@ if __name__ == "__main__":
     
     chunks = run_advanced_sentence_chunking(raw_text)
     print(f"\nCreated {len(chunks)} contextual chunks for the document.")
+    
+    Path("tmp").mkdir(parents=True, exist_ok=True)
+    with open("tmp/chunks-sentence.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)

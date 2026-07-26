@@ -41,5 +41,5 @@ dependencies = [
     "torch>=2.11.0",
     "tqdm>=4.67.3",
     "transformers>=5.7.0",
-    "unstructured[image,xlsx]>=0.24.1",
+    "unstructured[pdf]>=0.24.1",
 ]
