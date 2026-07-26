@@ -84,4 +84,4 @@ def clean_textful_doc(file_path):
         f.write(flattened_text)
 
     doc_content = Document(page_content=flattened_text, metadata=base_metadata)
-    return doc_content
+    return doc_content.page_content
