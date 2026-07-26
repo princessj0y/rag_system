@@ -54,8 +54,8 @@ def clean_textful_doc(file_path, is_eng):
             # https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
             languages=['eng' if is_eng else 'ita'],
             skip_headers_and_footers=True, # strips page numbers, repetitive document titles at the top of pages, and legal footers
-            # rip images and save them
-            extract_image_block_types=["Image"],
+            # rip images and tables and save them
+            extract_image_block_types=["Image", "Table"],
             extract_image_block_output_dir=str(image_dir)
         )
         
@@ -68,34 +68,22 @@ def clean_textful_doc(file_path, is_eng):
         logger.info(f"Saved parsed output to {cache_file}")
 
     # Enrich images
-    image_docs = [doc for doc in docs if doc.metadata.get("category") == "Image"]
+    image_docs = [doc for doc in docs if doc.metadata.get("category") in ('Table', 'Image')]
     if image_docs:
-        for doc in tqdm(image_docs, desc="Processing extracted images"):
+        for doc in tqdm(image_docs, desc="Processing extracted images and tables"):
             img_path = doc.metadata.get("image_path")
             if img_path and os.path.exists(img_path):
-                vision_text = clean_imageful_doc(img_path, cache_path=Path(img_path).with_suffix('.txt'))
-                # 1. Put it in page_content so it gets embedded and searched
-                doc.page_content = f"Image Description:\n{vision_text}"    
-                # 2. Tuck a safe copy in the metadata just in case it gets chopped
-                doc.metadata["raw_payload"] = vision_text
-                doc.metadata["payload_type"] = "image_markdown"
-    
-    # Handle tables
-    for doc in docs:
-        category = doc.metadata.get("category")
-        if not category == "Table":
-            continue
-        
-        html_table = doc.metadata.get("text_as_html")
-        if not html_table:
-            continue
-        
-        # Leave doc.page_content exactly as Unstructured made it (flattened text)
-        # because it's great for vector search keywords.
-                
-        # Stuff the fragile HTML into the metadata
-        doc.metadata["raw_payload"] = html_table
-        doc.metadata["payload_type"] = "table_html"
+                category = doc.metadata.get("category")
+                summary, md = clean_imageful_doc(img_path, 
+                                                 is_table=(category == 'Table'),
+                                                 is_eng=is_eng,
+                                                 cache_path=Path(img_path).with_suffix('.txt'))
+
+                # Put it in page_content so it gets embedded and searched
+                doc.page_content = summary
+                # Tuck a safe copy in the metadata just in case it gets chopped
+                doc.metadata["raw_payload"] = md
+                doc.metadata["payload_type"] = f"{category.lower()}_markdown"
 
     # Double-tap the noise
     # Unstructured's internal skip isn't 100% reliable, so we force-drop them here (especially headers)
@@ -109,7 +97,7 @@ def clean_textful_doc(file_path, is_eng):
 
     return docs
 
-def clean_imageful_doc(file_path, cache_path=None):
+def clean_imageful_doc(file_path, is_table=False, is_eng=True, cache_path=None):
     """
     Accepts an SVG, PNG, or JPG, converts SVGs in-memory, 
     and uses a local Ollama Vision LLM to extract data into structured Markdown.
@@ -130,47 +118,79 @@ def clean_imageful_doc(file_path, cache_path=None):
     if cache_path.exists():
         logger.info(f"Vision cache hit! Loading from {cache_path}")
         with open(cache_path, 'r', encoding='utf-8') as f:
-            return f.read()
-
-    logger.info(f"Cache miss. Running vision model on {file_path}...")
-    file_extension = file_path.lower().split('.')[-1]
-  
-    if file_extension == "svg":
-        import cairosvg
-        png_bytes = cairosvg.svg2png(url=file_path, outout_width=1600)
-        img_base64 = base64.b64encode(png_bytes).decode("utf-8")
-    elif file_extension in ["png", "jpg", "jpeg", "webp"]:
-        with open(file_path, "rb") as image_file:
-            img_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+            vision_text = f.read()
     else:
-        raise ValueError(f"Unsupported file type for vision processing: {file_extension}")
+        logger.info(f"Cache miss. Running vision model on {file_path}...")
+        file_extension = file_path.lower().split('.')[-1]
+    
+        if file_extension == "svg":
+            import cairosvg
+            png_bytes = cairosvg.svg2png(url=file_path, output_width=1600)
+            img_base64 = base64.b64encode(png_bytes).decode("utf-8")
+            mime_type = "image/png"
+        elif file_extension in ["png", "jpg", "jpeg", "webp"]:
+            with open(file_path, "rb") as image_file:
+                img_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+            mime_type = f"image/{'jpeg' if file_extension == 'jpg' else file_extension}"
+        else:
+            raise ValueError(f"Unsupported file type for vision processing: {file_extension}")
 
-    answer_llm = create_model_by_name(model="gemma4:31b-cloud")
-
-    prompt = """
-    You are an expert data extraction assistant. This is an image/infographic filled with statistics.
-    Transcribe ALL text, numbers, metrics, and chart data into clean, highly organized Markdown.
-    Make sure you explicitly pair metrics with their labels (e.g., 'Passaggi: 1,487 (77% completati)').
-    Maintain logical reading order and structure.
-    """
-
-    message = HumanMessage(
-        content=[
-            {"type" : "text", "text": prompt},
-            {"type": "image_url", 
-             "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
-        ]
-    )
-
-    response = answer_llm.invoke([message])
-    vision_text = response.content
-
-    # Save to cache
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(cache_path, 'w', encoding='utf-8') as f:
-        f.write(vision_text)
+        answer_llm = create_model_by_name(model="gemma4:31b-cloud")
         
-    return vision_text
+        target_lang = "English" if is_eng else "Italian"
+        if is_table:
+            prompt = """
+            You are an expert data extraction assistant. Analyze this table image.
+            You MUST structure your response exactly like this:
+            
+            ---SUMMARY---
+            [Write a 1-2 sentence description of what the table shows, including column names and main entities.\
+             The summary MUST be written in {target_lang}]
+            ---PAYLOAD---
+            [Write a perfect, row-by-row Markdown table transcription of all data]
+            """
+        else:
+            prompt = """
+            You are an expert data extraction assistant. This is an image/infographic filled with statistics.
+            Transcribe ALL text, numbers, metrics, and chart data into clean, highly organized Markdown.
+            Make sure you explicitly pair metrics with their labels (e.g., 'Passaggi: 1,487 (77% completati)').
+            Maintain logical reading order and structure.
+            Any descriptive text you generate MUST be written in {target_lang}.
+            """
+
+        message = HumanMessage(
+            content=[
+                {"type" : "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{img_base64}"}}
+            ]
+        )
+
+        response = answer_llm.invoke([message])
+        vision_text = response.content.strip()
+
+        # Save to cache
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_path, 'w', encoding='utf-8') as f:
+            f.write(vision_text)
+
+    if not is_table:
+        return  f"Image Description:\n{vision_text}", vision_text
+    
+    # Robustly split the output using the delimiter
+    if "---PAYLOAD---" in vision_text:
+        parts = vision_text.split("---PAYLOAD---", 1)
+
+        summary = parts[0].strip()
+        payload = parts[1].strip()
+
+        if "---SUMMARY---" in summary:
+            summary = summary.split("---SUMMARY---", 1)[1].strip()
+
+        return summary, payload
+    
+    logger.warning(f"Vision LLM missed the delimiter for {file_path}. Using fallback parsing.")
+    return "Visual data extracted.", vision_text.strip()
+
 
 def get_file_hash(file_path):
     """Generates a SHA-256 hash of the file to use as a unique ID."""
