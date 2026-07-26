@@ -145,7 +145,7 @@ if __name__ == "__main__":
     import yaml
     from pathlib import Path
     from .doc_cleaner import clean_doc
-    from utils.documents import preserialize_docs
+    from utils.documents import preserialize_docs, flatten_metadata_for_chroma
 
     #file_to_analyze = "./test/CELEX_32006L0054_EN_TXT.pdf"
     file_to_analyze = "./test/CELEX_32006L0054_IT_TXT.pdf"
@@ -157,4 +157,9 @@ if __name__ == "__main__":
     
     Path("tmp").mkdir(parents=True, exist_ok=True)    
     with open("tmp/chunks-hierarchical-legal.yaml", 'w', encoding='utf-8') as f:
+        yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)
+        
+    for chunk in chunks:
+        chunk.metadata = flatten_metadata_for_chroma(chunk.metadata)
+    with open("tmp/chunks-hierarchical-legal-flattened.yaml", 'w', encoding='utf-8') as f:
         yaml.dump(preserialize_docs(chunks), f, allow_unicode=True, sort_keys=False)

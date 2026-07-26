@@ -7,7 +7,6 @@ from datetime import datetime
 from tabulate import tabulate
 from chunking.doc_cleaner import clean_doc
 from dataset.dataset import load_dataset
-from utils.documents import flatten_metadata_for_chroma
 
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -79,6 +78,7 @@ def retrieve_chunking_dataset(
 ):
     from langchain_chroma import Chroma
     from langchain_core.documents import Document
+    from utils.documents import flatten_metadata_for_chroma, format_doc_for_llm
 
     experiment_dir = os.path.join(base_persist_dir, experiment_name)
     logger.info(f"Targeting persistent directory: {experiment_dir}")
@@ -112,8 +112,8 @@ def retrieve_chunking_dataset(
         # Per ogni domanda, cerchiamo i 10 pezzi più simili tra i tuoi chunk
         docs = retriever.invoke(query)
         # Salviamo il testo dei pezzi trovati
-        contexts.append([d.page_content for d in docs])
-    
+        contexts.append([format_doc_for_llm(d) for d in docs])
+
     # Aggiungiamo i pezzi trovati al nostro dataset
     dataset["contexts"] = contexts
     dataset["retrieved_contexts"] = contexts
@@ -138,10 +138,13 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
     dataset["response"] = []
     answer_llm = create_default_model()
     for i in tqdm(range(len(dataset["question"])), desc="Generating answers"):
+        joined_context = "\n\n====================\n\n".join(dataset["contexts"][i])
         search_prompt = f"""
         Answer only based on provided context.
         Question: {dataset["question"][i]}
-        Context: {dataset["contexts"][i]}
+        
+        Context: 
+        {joined_context}
         """
         answer = answer_llm.invoke(search_prompt).text
         dataset["response"].append(answer)

@@ -213,3 +213,57 @@ def flatten_metadata_for_chroma(metadata, parent_key=''):
                 items.append((new_key, str(v)))
                 
     return dict(items)
+
+def format_doc_for_llm(doc):
+    """
+    Takes a retrieved Chroma Document, reconstructs flattened JSON-path keys 
+    (like heading_path and payloads), and formats them for the LLM.
+    """
+    import re
+
+    parts = []
+    meta = doc.metadata
+    
+    # Reconstruct the heading_path (if present) from flattened Chroma metadata
+    heading_keys = [k for k in meta.keys() if k.startswith('heading_path[')]
+    heading_keys.sort(key=lambda x: int(re.search(r'\[(\d+)\]', x).group(1)))
+    
+    path_str = ""
+    if heading_keys:
+        path_parts = [str(meta[k]) for k in heading_keys]
+        path_str = " > ".join(path_parts)
+
+    if path_str:
+        parts.append(f"DOCUMENT SECTION: {path_str}")
+
+    # Reconstruct the payloads list of dicts from flattened keys
+    # Finds keys like "payloads[0].type" and "payloads[0].raw_content"
+    payload_keys = [k for k in meta.keys() if k.startswith('payloads[')]
+    
+    payloads_dict = {}
+    for k in payload_keys:
+        # Regex captures the index (e.g., 0) and the sub-key (e.g., "type" or "raw_content")
+        match = re.match(r'payloads\[(\d+)\]\.(.+)', k)
+        if match:
+            idx = int(match.group(1))
+            sub_key = match.group(2)
+            
+            if idx not in payloads_dict:
+                payloads_dict[idx] = {}
+            payloads_dict[idx][sub_key] = meta[k]
+            
+    # Sort by index to maintain the exact original order
+    reconstructed_payloads = [payloads_dict[i] for i in sorted(payloads_dict.keys())]
+
+    # Add the standard text chunk (which includes the LLM-generated summaries)
+    parts.append(doc.page_content)
+
+    # Inject ALL rich payloads safely
+    for p in reconstructed_payloads:
+        p_type = p.get("type", "unknown").upper()
+        p_content = p.get("raw_content", "")
+        
+        parts.append(f"--- FULL {p_type} DATA ---")
+        parts.append(str(p_content))
+
+    return "\n".join(parts)

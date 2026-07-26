@@ -82,8 +82,10 @@ def clean_textful_doc(file_path, is_eng):
                 # Put it in page_content so it gets embedded and searched
                 doc.page_content = summary
                 # Tuck a safe copy in the metadata just in case it gets chopped
-                doc.metadata["raw_payload"] = md
-                doc.metadata["payload_type"] = f"{category.lower()}_markdown"
+                doc.metadata["payloads"] = [{
+                    "type": f"{category.lower()}_markdown",
+                    "raw_content": md
+                }]
 
     # Double-tap the noise
     # Unstructured's internal skip isn't 100% reliable, so we force-drop them here (especially headers)
