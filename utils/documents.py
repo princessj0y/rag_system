@@ -165,6 +165,14 @@ def pick_content_separator(category, next_category):
 
 def merge_metadata(metadata_list, blacklist={"detection_class_prob", "coordinates", "category"}):
     merged = {}
+
+    def make_hashable(obj):
+        """Recursively converts dicts and lists into tuples so they can be hashed for O(1) lookups."""
+        if isinstance(obj, dict):
+            return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+        elif isinstance(obj, list) or isinstance(obj, tuple):
+            return tuple(make_hashable(v) for v in obj)
+        return obj
     
     for meta in metadata_list:
         for k, v in meta.items():
@@ -178,14 +186,21 @@ def merge_metadata(metadata_list, blacklist={"detection_class_prob", "coordinate
                 if current_val == v:
                     continue
                 
-                # Convert both to sets for easy union (handling strings vs lists)
-                current_set = set(current_val) if isinstance(current_val, (list, tuple)) else {current_val}
-                new_set = set(v) if isinstance(v, (list, tuple)) else {v}
+                # Normalize both to lists
+                current_list = list(current_val) if isinstance(current_val, (list, tuple)) else [current_val]
+                new_list = list(v) if isinstance(v, (list, tuple)) else [v]
                 
-                union_set = current_set.union(new_set)
+                # O(1) lookups for deduplication
+                seen = {make_hashable(x) for x in current_list}
+                
+                for item in new_list:
+                    item_signature = make_hashable(item)
+                    if item_signature not in seen:
+                        seen.add(item_signature)
+                        current_list.append(item)
                 
                 # If it's just one item, keep it as a primitive, otherwise list
-                merged[k] = list(union_set) if len(union_set) > 1 else list(union_set)[0]
+                merged[k] = current_list if len(current_list) > 1 else current_list[0]
                 
     return merged
 
