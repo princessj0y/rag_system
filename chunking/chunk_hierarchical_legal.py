@@ -58,10 +58,14 @@ def run_hierarchical_legal_chunking(docs, is_eng=False):
 
     chunks = []
     current_buffer = []
+    buffer_has_content = False
 
     def save_chunk():
         """Combines buffered docs into a single chunk and merges their metadata."""
-        if not current_buffer:
+        nonlocal buffer_has_content
+        
+        # If the buffer is empty or only contains headers/titles, do not flush.
+        if not current_buffer or not buffer_has_content:
             return
             
         # Context-aware text reconstruction for the chunk
@@ -87,6 +91,7 @@ def run_hierarchical_legal_chunking(docs, is_eng=False):
             chunks.append(Document(page_content=content, metadata=merged_meta))
             
         current_buffer.clear()
+        buffer_has_content = False
     
     
     def process_legal_node(node_type, clean_text):
@@ -136,6 +141,7 @@ def run_hierarchical_legal_chunking(docs, is_eng=False):
 
         # Standard content (NarrativeText, ListItems, Tables, Images)
         current_buffer.append(doc)
+        buffer_has_content = True
 
     # Final flush for the last section of the document
     save_chunk()
