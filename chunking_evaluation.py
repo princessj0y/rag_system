@@ -1,3 +1,4 @@
+import os
 import re
 import csv
 import asyncio
@@ -74,16 +75,17 @@ def retrieve_chunking_dataset(
     raw_text, 
     is_eng, 
     dataset, 
-    persist_dir="./chroma_eval_cache"
+    base_persist_dir="./chroma_eval_cache"
 ):
     from langchain_chroma import Chroma
     from langchain_core.documents import Document
 
-    logger.info(f"Targeting persistent collection: {experiment_name}")
+    experiment_dir = os.path.join(base_persist_dir, experiment_name)
+    logger.info(f"Targeting persistent directory: {experiment_dir}")
     vectorstore = Chroma(
-        collection_name=experiment_name,
+        collection_name="eval_collection",
         embedding_function=default_embeddings,
-        persist_directory=persist_dir
+        persist_directory=experiment_dir
     )
 
     # Check if we already did the work
@@ -121,8 +123,8 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
     experiment_name = f"{model_name}_{embeddings_model_name}_{chunking_name.lower().replace(" ", "-")}_{"EN" if is_eng else "IT"}"
     # Replace anything that isn't alphanumeric, dash, or underscore with a dash
     experiment_name = re.sub(r'[^a-zA-Z0-9_-]', '-', experiment_name)
-    # Strip leading/trailing punctuation and limit to 63 characters
-    experiment_name = experiment_name.strip('_-')[:63]
+    # Strip leading/trailing punctuation
+    experiment_name = experiment_name.strip('_-')
 
     if chunking_function == None:
         dataset = retrieve_pageindex_dataset(page_index_doc_id, dataset)
