@@ -109,7 +109,7 @@ def retrieve_chunking_dataset(
 
     # Set up the retriever
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
-    logger.info(f"Evaluating...")
+    logger.info(f"Retrieving contexts...")
     contexts = []
     for query in dataset["question"]:
         # Per ogni domanda, cerchiamo i 10 pezzi più simili tra i tuoi chunk
@@ -251,16 +251,6 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
             evaluate_ac()
         )
 
-        logger.info(
-            f"context_precision: {cp_val}"
-            f", context_recall: {cr_val}"
-            f", context_entity_recall: {cer_val}"
-            f", faithfulness: {f_val}"
-            f", noise_sensitivity: {ns_val}, "
-            f", answer_relevancy: {ar_val}"
-            f", answer_correctness: {ac_val}"
-        )
-
         return {
             **row,
             "experiment_name": experiment_name,
@@ -280,6 +270,7 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
         root_dir=".",
         data=pd.DataFrame(dataset).to_dict(orient="records")
     )
+    logger.info("Running experiment...")
     risultato = await run_rag_evaluation.arun(
         dataset=dataset_finale,
         name=experiment_name,
@@ -287,6 +278,16 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
 
     # df = risultato.to_pandas()
     df = df = pd.DataFrame(risultato)
+    logger.info(
+        f"context_precision: {df['context_precision'].mean()}"
+        f", context_recall: {df['context_recall'].mean()}"
+        f", context_entity_recall: {df['context_entity_recall'].mean()}"
+        f", faithfulness: {df['faithfulness'].mean()}"
+        f", noise_sensitivity: {df['noise_sensitivity'].mean()}, "
+        f", answer_relevancy: {df['answer_relevancy'].mean()}"
+        f", answer_correctness: {df['answer_correctness'].mean()}"
+    )
+    
     return (
             df['context_precision'].mean(), 
             df['context_recall'].mean(), 
@@ -312,9 +313,9 @@ async def evaluate_file(file_name, page_index_doc_id, is_eng, dataset_path):
                 precision, recall, entity_recall, faithfulness, noise_sensitivity, answer_relevancy, answer_correctness = await evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
                 table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}", f"{noise_sensitivity:.4f}", f"{answer_relevancy:.4f}", f"{answer_correctness:.4f}"])
                 if faithfulness > 0.75 or faithfulness:
-                    print("OK")
+                    logger.info("OK")
                 else:
-                    print("I'm unable to answer the question")
+                    logger.info("I'm unable to answer the question")
             except Exception as e:
                 logger.exception("Failed, skipping")
 
