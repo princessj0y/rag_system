@@ -9,9 +9,7 @@ is_streaming_stdout_enabled = os.getenv("DEBUG_PRINT_STDOUT", "false").lower() =
 os.environ["RAGAS_DO_NOT_TRACK"] = 'true'
 
 if is_streaming_stdout_enabled:
-    import sys
     import logging
-    logging.basicConfig(stream=sys.stdout, level=logging.WARN)
     logging.getLogger("instructor").setLevel(logging.DEBUG)
 
 ollama_api_keys = [

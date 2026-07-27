@@ -9,8 +9,7 @@ from chunking.doc_cleaner import clean_doc
 from dataset.dataset import load_dataset
 
 from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
-from utils.my_log import logger, mdc
+from utils.my_log import logger, async_mdc
 
 from ragas import experiment, Dataset
 from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings, create_default_embedding_model_iterator
@@ -307,7 +306,7 @@ async def evaluate_file(file_name, page_index_doc_id, is_eng, dataset_path):
     # Esegui benchmark
     table_data = []
     for name, chunking_function in tqdm(chunking_strategies.items(), desc="Chunking strategies"):
-        with mdc(method=name):
+        async with async_mdc(method=name):
             logger.info(f"Metodo {name}...")
             try:
                 precision, recall, entity_recall, faithfulness, noise_sensitivity, answer_relevancy, answer_correctness = await evaluate_method(name, chunking_function, page_index_doc_id, raw_text, is_eng, golden_dataset)
@@ -330,9 +329,8 @@ async def evaluate_file(file_name, page_index_doc_id, is_eng, dataset_path):
 
 
 async def main():
-    with logging_redirect_tqdm(loggers=[logger]):
-        for (file_name, page_index_doc_id, language, dataset_path) in tqdm(files, desc="Files"):
-            with mdc(file_name=file_name):
-                await evaluate_file(file_name, page_index_doc_id, (language == 'eng'), dataset_path)
+    for (file_name, page_index_doc_id, language, dataset_path) in tqdm(files, desc="Files"):
+        async with async_mdc(file_name=file_name):
+            await evaluate_file(file_name, page_index_doc_id, (language == 'eng'), dataset_path)
 
 asyncio.run(main())
