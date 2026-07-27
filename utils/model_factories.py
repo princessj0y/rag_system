@@ -2,6 +2,8 @@ import os
 from .my_log import logger
 import itertools
 import random
+import asyncio
+import httpx
 
 is_streaming_stdout_enabled = os.getenv("DEBUG_PRINT_STDOUT", "false").lower() == "true"
 os.environ["RAGAS_DO_NOT_TRACK"] = 'true'
@@ -18,11 +20,6 @@ ollama_api_keys = [
         "OLLAMA_API_KEY" if i == 0  else f"OLLAMA_API_KEY_{i}"
     )) is not None
 ]
-ollama_api_keys_cycle = itertools.cycle(ollama_api_keys) if ollama_api_keys else None
-
-# Randomize the first model used by skipping a random amount
-for i in range(random.randint(0, len(ollama_api_keys))):
-    next(ollama_api_keys_cycle)
 
 ########################################################################
 #                               LLMs                                   #
@@ -30,10 +27,13 @@ for i in range(random.randint(0, len(ollama_api_keys))):
 
 if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
-elif ollama_api_keys_cycle is not None:
+    _ragas_global_semaphore = asyncio.Semaphore(3)
+elif len(ollama_api_keys) > 0:
     model_name = "gpt-oss:120b-cloud"
+    _ragas_global_semaphore = asyncio.Semaphore(3 * len(ollama_api_keys))
 else:
     model_name = "phi3"
+    _ragas_global_semaphore = asyncio.Semaphore(1)
 
 ########################################################################
 #                           EMBEDDINGS                                 #
@@ -86,14 +86,17 @@ def create_default_model(**kwargs):
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             **kwargs
         )
-    elif ollama_api_keys_cycle is not None:
+    elif len(ollama_api_keys) > 0:
+        keys = list(ollama_api_keys)
+        random.shuffle(keys)
         llm = create_ollama_model(
             model=model_name,
             base_url="https://ollama.com",
-            client_kwargs={
-                "headers": {
-                    "Authorization": f"Bearer {next(ollama_api_keys_cycle)}"
-                }
+            sync_client_kwargs={
+                "transport": SyncKeyRotationHttpxTransport(shuffled_keys=keys)
+            },
+            async_client_kwargs={
+                "transport": AsyncKeyRotationHttpxTransport(shuffled_keys=keys)
             },
             **kwargs
         )
@@ -123,13 +126,16 @@ def create_model_by_name(model, **kwargs):
         if len(ollama_api_keys) == 0:
             raise f"no OLLAMA_API_KEY env var found, cannot use {model}"
 
+        keys = list(ollama_api_keys)
+        random.shuffle(keys)
         return create_ollama_model(
             model=model,
             base_url="https://ollama.com",
-            client_kwargs={
-                "headers": {
-                    "Authorization": f"Bearer {next(ollama_api_keys_cycle)}"
-                }
+            sync_client_kwargs={
+                "transport": SyncKeyRotationHttpxTransport(shuffled_keys=keys)
+            },
+            async_client_kwargs={
+                "transport": AsyncKeyRotationHttpxTransport(shuffled_keys=keys)
             },
             **kwargs
         )
@@ -152,50 +158,62 @@ def create_ragas_model(model, provider="openai", **kwargs):
 def create_default_ragas_model_iterator():
     models = []
     if "GOOGLE_API_KEY" in os.environ:
-        logger.info("Running with Gemini...")
+        logger.info("Running with Gemini as LLM...")
+        # TODO: limit gemini concurrency with the _ragas_global_semaphore
         from google import genai
         client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
-        models.append(create_ragas_model(
-            model_name,
-            provider="google",
-            client=client
-        ))
+        return itertools.cycle([
+            create_ragas_model(model_name, provider="google", client=client)
+        ])
     
     elif len(ollama_api_keys) > 0:
-        logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found)...")
+        logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) as LLM...")
         from openai import AsyncOpenAI
-        for key in ollama_api_keys:
-            client = AsyncOpenAI(
-                api_key=key, 
-                base_url="https://ollama.com/v1"
-            )
-            models.append(create_ragas_model(
-                model_name, 
-                provider="openai", 
-                client=client,                  
-                max_tokens=4096, 
-                # Ollama-specific context window size
-                extra_body={
-                    "options": {
-                        "num_ctx": 8192 # Total context (input + output)
-                    }
-                },
-            ))
+        def model_generator():
+            while True:
+                keys = list(ollama_api_keys)
+                random.shuffle(keys)
+                client = AsyncOpenAI(
+                    api_key="ollama",
+                    base_url="https://ollama.com/v1",
+                    http_client=httpx.AsyncClient(
+                        transport=BoundedAsyncHttpxTransport(
+                            delegate=AsyncKeyRotationHttpxTransport(shuffled_keys=keys),
+                            semaphore=_ragas_global_semaphore
+                        ),
+                        timeout=120.0,
+                    )
+                )
+                yield create_ragas_model(
+                    model_name, 
+                    provider="openai", 
+                    client=client,                  
+                    max_tokens=4096, 
+                    # Ollama-specific context window size
+                    extra_body={
+                        "options": {
+                            "num_ctx": 8192 # Total context (input + output)
+                        }
+                    },
+                )
+        return model_generator()
 
-    else:
-        logger.info("Running with Ollama...")
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(
-            api_key="ollama", 
-            base_url="http://localhost:11434/v1"
+    logger.info("Running with Ollama as LLM...")
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(
+        api_key="ollama", 
+        base_url="http://localhost:11434/v1",
+        http_client=httpx.AsyncClient(
+            transport=BoundedAsyncHttpxTransport(
+                delegate=httpx.AsyncHTTPTransport(),
+                semaphore=_ragas_global_semaphore
+            ),
+            timeout=120.0  # Safe reading window for heavy 120B token generations
         )
-        models.append(create_ragas_model(model_name, provider="openai", client=client))
-
-    iter = itertools.cycle(models)
-    # Randomize the first model used by skipping a random amount
-    for i in range(random.randint(0, len(models))):
-        next(iter)
-    return iter
+    )
+    return itertools.cycle([
+        create_ragas_model(model_name, provider="openai", client=client) 
+    ])
 
 def create_ragas_embedding_model(model, provider="openai", **kwargs):
     from ragas.embeddings.base import embedding_factory
@@ -209,7 +227,7 @@ def create_ragas_embedding_model(model, provider="openai", **kwargs):
 def create_default_embedding_model_iterator():
     models = []
     if "GOOGLE_API_KEY" in os.environ:
-        logger.info("Running with Gemini...")
+        logger.info("Running with Gemini for embeddings...")
         from google import genai
         client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
         models.append(create_ragas_embedding_model(
@@ -219,12 +237,12 @@ def create_default_embedding_model_iterator():
         ))
     
     # elif len(ollama_api_keys) > 0:
-    #     logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found)...")
+    #     logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) for embeddings...")
     #     from openai import AsyncOpenAI
     #     for key in ollama_api_keys:
     #         client = AsyncOpenAI(
     #             api_key=key, 
-    #             base_url="https://ollama.com"
+    #             base_url="https://ollama.com/v1"
     #         )
     #         models.append(create_ragas_embedding_model(
     #             embeddings_model_name, 
@@ -233,7 +251,7 @@ def create_default_embedding_model_iterator():
     #         ))
 
     else:
-        logger.info("Running with Ollama...")
+        logger.info("Running with Ollama for embeddings...")
         # from langchain_ollama import OllamaEmbeddings
         # from ragas.embeddings import LangchainEmbeddingsWrapper
 
@@ -259,3 +277,69 @@ def create_default_embedding_model_iterator():
     return iter
 
 
+class SyncKeyRotationHttpxTransport(httpx.HTTPTransport):
+
+    def __init__(self, shuffled_keys, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.keys = shuffled_keys
+        self.total_keys = len(shuffled_keys)
+        self.current_index = 0
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        while True:
+            active_key = self.keys[self.current_index]
+            request.headers["Authorization"] = f"Bearer {active_key}"
+            try:
+                response = super().handle_request(request)
+            except Exception as e:
+                raise e
+            
+            if response.status_code != 429:
+                return response
+            
+            self.current_index += 1
+            if self.current_index >= self.total_keys:
+                raise httpx.HTTPStatusError("Ollama keys completely exhausted.", request=request, response=response)
+
+class AsyncKeyRotationHttpxTransport(httpx.AsyncHTTPTransport):
+
+    def __init__(self, shuffled_keys, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.keys = shuffled_keys
+        self.total_keys = len(shuffled_keys)
+        self.current_index = 0
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        while True:
+            active_key = self.keys[self.current_index]
+            request.headers["Authorization"] = f"Bearer {active_key}"
+            try:
+                response = await super().handle_async_request(request)
+            except Exception as e:
+                raise e
+            
+            if response.status_code != 429:
+                return response
+            
+            self.current_index += 1
+            if self.current_index >= self.total_keys:
+                raise httpx.HTTPStatusError("Ollama keys completely exhausted.", request=request, response=response)
+
+class BoundedAsyncHttpxTransport(httpx.AsyncBaseTransport):
+    """
+    A decorator wrapper for any httpx Async Transport that chokes concurrency
+    using a shared asyncio.Semaphore before delegating the HTTP call.
+    """
+    def __init__(self, delegate: httpx.AsyncBaseTransport, semaphore: asyncio.Semaphore):
+        super().__init__()
+        self.delegate = delegate
+        self.semaphore = semaphore
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        async with self.semaphore:
+            # Delegate the actual HTTP call to the underlying transport instance
+            return await self.delegate.handle_async_request(request)
+
+    async def aclose(self) -> None:
+        """Ensure the underlying delegate transport is gracefully closed."""
+        await self.delegate.aclose()

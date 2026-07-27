@@ -155,76 +155,111 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
 
     @experiment()
     async def run_rag_evaluation(row):
-        cp_val = cr_val = cer_val = f_val = ns_val = ar_val = ac_val = None
+        async def evaluate_cp():
+            try:
+                score = await ContextPrecision(llm=next(llm_iterator)).ascore(
+                    user_input=row["user_input"], 
+                    reference=row["reference"],
+                    retrieved_contexts=row["retrieved_contexts"]
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"ContextPrecision failed: {e}")
+                return None
 
-        try:
-            cp_score = await ContextPrecision(llm=next(llm_iterator)).ascore(
-                user_input=row["user_input"], 
-                reference=row["reference"],
-                retrieved_contexts=row["retrieved_contexts"]
-            )
-            cp_val = getattr(cp_score, 'value', cp_score)
-        except Exception as e:
-            logger.warning(f"ContextPrecision failed: {e}")
+        async def evaluate_cr():
+            try:
+                score = await ContextRecall(llm=next(llm_iterator)).ascore(
+                    user_input=row["user_input"], 
+                    retrieved_contexts=row["retrieved_contexts"],
+                    reference=row["reference"]
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"ContextRecall failed: {e}")
+                return None
 
-        try:
-            cr_score = await ContextRecall(llm=next(llm_iterator)).ascore(
-                user_input=row["user_input"], 
-                retrieved_contexts=row["retrieved_contexts"],
-                reference=row["reference"]
-            )
-            cr_val = getattr(cr_score, 'value', cr_score)
-        except Exception as e:
-            logger.warning(f"ContextRecall failed: {e}")
+        async def evaluate_cer():
+            try:
+                score = await ContextEntityRecall(llm=next(llm_iterator)).ascore(
+                    reference=row["reference"], 
+                    retrieved_contexts=row["retrieved_contexts"]
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"ContextEntityRecall failed: {e}")
+                return None
 
-        try:
-            cer_score = await ContextEntityRecall(llm=next(llm_iterator)).ascore(
-                reference=row["reference"], 
-                retrieved_contexts=row["retrieved_contexts"]
-            )
-            cer_val = getattr(cer_score, 'value', cer_score)
-        except Exception as e:
-            logger.warning(f"ContextEntityRecall failed: {e}")
+        async def evaluate_f():
+            try:
+                score = await Faithfulness(llm=next(llm_iterator)).ascore(
+                    user_input=row["user_input"],
+                    response=row["response"],
+                    retrieved_contexts=row["retrieved_contexts"],
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"Faithfulness failed: {e}")
+                return None
 
-        try:
-            f_score = await Faithfulness(llm=next(llm_iterator)).ascore(
-                user_input=row["user_input"],
-                response=row["response"],
-                retrieved_contexts=row["retrieved_contexts"],
-            )
-            f_val = getattr(f_score, 'value', f_score)
-        except Exception as e:
-            logger.warning(f"Faithfulness failed: {e}")
+        async def evaluate_ns():
+            try:
+                score = await NoiseSensitivity(llm=next(llm_iterator)).ascore(
+                    user_input=row["user_input"],
+                    response=row["response"],
+                    reference=row["reference"],
+                    retrieved_contexts=row["retrieved_contexts"],
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"NoiseSensitivity failed: {e}")
+                return None
 
-        try:
-            ns_score = await NoiseSensitivity(llm=next(llm_iterator)).ascore(
-                user_input=row["user_input"],
-                response=row["response"],
-                reference=row["reference"],
-                retrieved_contexts=row["retrieved_contexts"],
-            )
-            ns_val = getattr(ns_score, 'value', ns_score)
-        except Exception as e:
-            logger.warning(f"NoiseSensitivity failed: {e}")
+        async def evaluate_ar():
+            try:
+                score = await AnswerRelevancy(llm=next(llm_iterator), embeddings=current_embedding).ascore(
+                    user_input=row["user_input"],
+                    response=row["response"]
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"AnswerRelevancy failed: {e}")
+                return None
 
-        try:
-            ar_score = await AnswerRelevancy(llm=next(llm_iterator), embeddings=current_embedding).ascore(
-                user_input=row["user_input"],
-                response=row["response"]
-            )
-            ar_val = getattr(ar_score, 'value', ar_score)
-        except Exception as e:
-            logger.warning(f"AnswerRelevancy failed: {e}")
+        async def evaluate_ac():
+            try:
+                score = await AnswerCorrectness(llm=next(llm_iterator), embeddings=current_embedding).ascore(
+                    user_input=row["user_input"],
+                    response=row["response"],
+                    reference=row["reference"]
+                )
+                return getattr(score, 'value', score)
+            except Exception as e:
+                logger.warning(f"AnswerCorrectness failed: {e}")
+                return None
 
-        try:
-            ac_score = await AnswerCorrectness(llm=next(llm_iterator), embeddings=current_embedding).ascore(
-                user_input=row["user_input"],
-                response=row["response"],
-                reference=row["reference"]
-            )
-            ac_val = getattr(ac_score, 'value', ac_score)
-        except Exception as e:
-            logger.warning(f"AnswerCorrectness failed: {e}")
+        # Enqueue ALL metric evaluations for this row at the exact same time.
+        # The underlying LLM model impl is in charge of limiting request concurrency via a semaphore, 
+        # so that Python can aggressively schedule everything without flooding Ollama/Gemini.
+        cp_val, cr_val, cer_val, f_val, ns_val, ar_val, ac_val = await asyncio.gather(
+            evaluate_cp(),
+            evaluate_cr(),
+            evaluate_cer(),
+            evaluate_f(),
+            evaluate_ns(),
+            evaluate_ar(),
+            evaluate_ac()
+        )
+
+        logger.info(
+            f"context_precision: {cp_val}"
+            f", context_recall: {cr_val}"
+            f", context_entity_recall: {cer_val}"
+            f", faithfulness: {f_val}"
+            f", noise_sensitivity: {ns_val}, "
+            f", answer_relevancy: {ar_val}"
+            f", answer_correctness: {ac_val}"
+        )
 
         return {
             **row,
@@ -249,9 +284,7 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_id, r
         dataset=dataset_finale,
         name=experiment_name,
     )
-    risultato = [await run_rag_evaluation(row) for row in dataset_finale]
 
-    logger.info(risultato)
     # df = risultato.to_pandas()
     df = df = pd.DataFrame(risultato)
     return (
