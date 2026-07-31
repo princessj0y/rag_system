@@ -74,10 +74,14 @@ def clean_textful_doc(file_path, is_eng):
             img_path = doc.metadata.get("image_path")
             if img_path and os.path.exists(img_path):
                 category = doc.metadata.get("category")
-                summary, md = clean_imageful_doc(img_path, 
-                                                 is_table=(category == 'Table'),
-                                                 is_eng=is_eng,
-                                                 cache_path=Path(img_path).with_suffix('.txt'))
+                try:
+                    summary, md = clean_imageful_doc(img_path, 
+                                                    is_table=(category == 'Table'),
+                                                    is_eng=is_eng,
+                                                    cache_path=Path(img_path).with_suffix('.txt'))
+                except:
+                    logger.exception(f"Failed to extract {category} {img_path}, skipping it...")
+                    continue
 
                 # Put it in page_content so it gets embedded and searched
                 doc.page_content = summary
@@ -141,7 +145,7 @@ def clean_imageful_doc(file_path, is_table=False, is_eng=True, cache_path=None):
         
         target_lang = "English" if is_eng else "Italian"
         if is_table:
-            prompt = """
+            prompt = f"""
             You are an expert data extraction assistant. Analyze this table image.
             You MUST structure your response exactly like this:
             
@@ -152,7 +156,7 @@ def clean_imageful_doc(file_path, is_table=False, is_eng=True, cache_path=None):
             [Write a perfect, row-by-row Markdown table transcription of all data]
             """
         else:
-            prompt = """
+            prompt = f"""
             You are an expert data extraction assistant. This is an image/infographic filled with statistics.
             Transcribe ALL text, numbers, metrics, and chart data into clean, highly organized Markdown.
             Make sure you explicitly pair metrics with their labels (e.g., 'Passaggi: 1,487 (77% completati)').
