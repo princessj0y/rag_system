@@ -1,0 +1,194 @@
+- id: ts3_short_01
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    Quali sono i macro-obiettivi strategici principali delineati nel documento?
+  answer: >
+    I macro-obiettivi includono il sostegno all'adozione di applicazioni di IA per modelli produttivi, la promozione della ricerca scientifica fondazionale e applicata, e la creazione di condizioni favorevoli tramite la formazione dei talenti e l'efficientamento della Pubblica Amministrazione[cite: 2].
+  ground_truth: >
+    I macro-obiettivi includono il sostegno all'adozione di applicazioni di IA per modelli produttivi, la promozione della ricerca scientifica fondazionale e applicata, e la creazione di condizioni favorevoli tramite la formazione dei talenti e l'efficientamento della Pubblica Amministrazione[cite: 2].
+  article_refs:
+  - Premessa
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Premessa
+  adversarial: false
+
+- id: ts3_short_02
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    Che cos'è la Fondazione per l'Intelligenza Artificiale descritta nel documento?
+  answer: >
+    È il soggetto posto sotto il diretto controllo della Presidenza del Consiglio dei Ministri che ha la responsabilità dell'attuazione, del coordinamento e del monitoraggio delle singole iniziative della strategia nazionale[cite: 2].
+  ground_truth: >
+    È il soggetto posto sotto il diretto controllo della Presidenza del Consiglio dei Ministri che ha la responsabilità dell'attuazione, del coordinamento e del monitoraggio delle singole iniziative della strategia nazionale[cite: 2].
+  article_refs:
+  - Azione A.3
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Azione A.3
+  adversarial: false
+
+- id: ts3_short_03
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    Quale rischio specifico è associato al "non fare" nell'ambito dell'IA per l'Italia?
+  answer: >
+    Un approccio timido rischia di risolversi in uno spreco di risorse e in un'ulteriore perdita di competitività, portando l'Italia a limitarsi a importare soluzioni esistenti e sviluppate altrove[cite: 2].
+  ground_truth: >
+    Un approccio timido rischia di risolversi in uno spreco di risorse e in un'ulteriore perdita di competitività, portando l'Italia a limitarsi a importare soluzioni esistenti e sviluppate altrove[cite: 2].
+  article_refs:
+  - Rischi della strategia
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Rischi della strategia
+  adversarial: false
+
+- id: ts3_short_04
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    Cos'è il registro dei dataset e modelli previsto dall'Azione A.1?
+  answer: >
+    È un programma mirato alla definizione di un registro nazionale di dataset e modelli eticamente affidabili e riusabili per accelerare lo sviluppo di soluzioni digitali per le aziende italiane e la Pubblica Amministrazione[cite: 2].
+  ground_truth: >
+    È un programma mirato alla definizione di un registro nazionale di dataset e modelli eticamente affidabili e riusabili per accelerare lo sviluppo di soluzioni digitali per le aziende italiane e la Pubblica Amministrazione[cite: 2].
+  article_refs:
+  - Azione A.1
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Azione A.1
+  adversarial: false
+
+- id: ts3_short_05
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    Quale ruolo ricopre l'Agenzia di vigilanza italiana sull'IA?
+  answer: >
+    Avrà ruoli di vigilanza e notificazione sui sistemi di IA, offrendo inoltre supporto per la comprensione e l'attuazione della normativa europea (AI Act) a vantaggio del sistema produttivo nazionale[cite: 2].
+  ground_truth: >
+    Avrà ruoli di vigilanza e notificazione sui sistemi di IA, offrendo inoltre supporto per la comprensione e l'attuazione della normativa europea (AI Act) a vantaggio del sistema produttivo nazionale[cite: 2].
+  article_refs:
+  - Organi Regolatori
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Organi Regolatori
+  adversarial: false
+
+- id: ts3_medium_01
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    Come intende la strategia affrontare il rischio del divario digitale (digital divide) in Italia?
+  answer: >
+    La strategia prevede di arginare il rischio di accrescere i divari e le disomogeneità territoriali promuovendo iniziative di sistema trasparenti e accessibili a livello nazionale, investendo sul capitale umano e su percorsi mirati di upskilling e reskilling[cite: 2].
+  ground_truth: >
+    La strategia prevede di arginare il rischio di accrescere i divari e le disomogeneità territoriali promuovendo iniziative di sistema trasparenti e accessibili a livello nazionale, investendo sul capitale umano e su percorsi mirati di upskilling e reskilling[cite: 2].
+  article_refs:
+  - Rischi della strategia
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Rischi della strategia
+  adversarial: false
+
+- id: ts3_medium_02
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    In che modo la PA dovrebbe approcciare il procurement di sistemi di Intelligenza Artificiale?
+  answer: >
+    La PA dovrà basarsi su linee guida specifiche che la aiutino ad orientarsi nell'acquisizione di servizi di IA; queste linee guida garantiranno non solo la conformità funzionale, ma anche adeguati livelli di sicurezza, aderenza alle norme europee e neutralità tecnologica, evitando l'utilizzo obbligato di soluzioni proprietarie[cite: 2].
+  ground_truth: >
+    La PA dovrà basarsi su linee guida specifiche che la aiutino ad orientarsi nell'acquisizione di servizi di IA; queste linee guida garantiranno non solo la conformità funzionale, ma anche adeguati livelli di sicurezza, aderenza alle norme europee e neutralità tecnologica, evitando l'utilizzo obbligato di soluzioni proprietarie[cite: 2].
+  article_refs:
+  - Azione PA.2
+  - PA.3
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Strategia per la PA
+  adversarial: false
+
+- id: ts3_long_01
+  test_set: 3
+  answer_type: long
+  difficulty: hard
+  question: >
+    Analizza in che modo la strategia italiana per l'IA intende potenziare l'infrastruttura di rete nazionale e quali sono le motivazioni alla base di questa scelta.
+  answer: >
+    Il crescente utilizzo di soluzioni basate sull'IA provocherà un notevole aumento del traffico dati, comportando il rischio di congestione delle attuali infrastrutture digitali[cite: 2]. Per rispondere a questa sfida, la strategia promuove lo sviluppo di reti intelligenti in grado di adattarsi dinamicamente alla domanda in tempo reale[cite: 2]. Inoltre, incentiva la collaborazione tra pubblico e privato per gli investimenti infrastrutturali e supporta la standardizzazione di soluzioni interoperabili e di tecnologie di edge computing, utili a ridurre il carico e limitare l'impatto sulla rete[cite: 2].
+  ground_truth: >
+    Il crescente utilizzo di soluzioni basate sull'IA provocherà un notevole aumento del traffico dati, comportando il rischio di congestione delle attuali infrastrutture digitali[cite: 2]. Per rispondere a questa sfida, la strategia promuove lo sviluppo di reti intelligenti in grado di adattarsi dinamicamente alla domanda in tempo reale[cite: 2]. Inoltre, incentiva la collaborazione tra pubblico e privato per gli investimenti infrastrutturali e supporta la standardizzazione di soluzioni interoperabili e di tecnologie di edge computing, utili a ridurre il carico e limitare l'impatto sulla rete[cite: 2].
+  article_refs:
+  - Azione A.2
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Azione A.2
+  adversarial: false
+
+- id: ts3_long_02
+  test_set: 3
+  answer_type: long
+  difficulty: hard
+  question: >
+    Quali sono le azioni previste dalla strategia per supportare e facilitare lo sviluppo delle PMI e la creazione di start-up innovative nel settore dell'Intelligenza Artificiale?
+  answer: >
+    La strategia prevede l'istituzione di "facilitatori" per l'IA operanti sul territorio che offrano servizi di innovazione alle imprese, e l'impiego di risorse finanziarie dedicate (finanza ordinaria, venture capital, voucher) per sostenere specifici progetti di adozione dell'IA nelle PMI[cite: 2]. Per quanto riguarda le start-up, il piano si prefigge di stimolare la creazione di spin-off e laboratori Al-Enterprise all'interno degli atenei per connettere ricercatori e mondo industriale[cite: 2]. L'obiettivo complessivo è fare massa critica, mettendo in rete istituzioni e attori privati in modo da poter attrarre maggiormente gli investitori[cite: 2].
+  ground_truth: >
+    La strategia prevede l'istituzione di "facilitatori" per l'IA operanti sul territorio che offrano servizi di innovazione alle imprese, e l'impiego di risorse finanziarie dedicate (finanza ordinaria, venture capital, voucher) per sostenere specifici progetti di adozione dell'IA nelle PMI[cite: 2]. Per quanto riguarda le start-up, il piano si prefigge di stimolare la creazione di spin-off e laboratori Al-Enterprise all'interno degli atenei per connettere ricercatori e mondo industriale[cite: 2]. L'obiettivo complessivo è fare massa critica, mettendo in rete istituzioni e attori privati in modo da poter attrarre maggiormente gli investitori[cite: 2].
+  article_refs:
+  - Azione I.1
+  - Azione I.2
+  - Azione I.4
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Strategia per le Imprese
+  adversarial: false
+
+- id: ts3_short_06
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    Secondo lo schema dell'architettura della strategia, quali sono le quattro macroaree verticali sottoposte al coordinamento e monitoraggio?
+  answer: >
+    Le quattro macroaree sono: Strategia per la Ricerca, Strategia per la Pubblica Amministrazione, Strategia per le Imprese e Strategia per la Formazione[cite: 2].
+  ground_truth: >
+    Le quattro macroaree sono: Strategia per la Ricerca, Strategia per la Pubblica Amministrazione, Strategia per le Imprese e Strategia per la Formazione[cite: 2].
+  article_refs:
+  - Architettura della strategia
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Architettura della strategia
+  adversarial: false
+
+- id: ts3_medium_03
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    Come sono classificate e nominate le azioni strategiche abilitanti relative alle infrastrutture all'interno della "Mappa delle azioni strategiche"?
+  answer: >
+    Le azioni abilitanti infrastrutturali sono due: A.1, denominata "Patrimonio di conoscenza nazionale: Dataset e modelli", e A.2, denominata "Infrastrutture di rete per l'Intelligenza Artificiale"[cite: 2].
+  ground_truth: >
+    Le azioni abilitanti infrastrutturali sono due: A.1, denominata "Patrimonio di conoscenza nazionale: Dataset e modelli", e A.2, denominata "Infrastrutture di rete per l'Intelligenza Artificiale"[cite: 2].
+  article_refs:
+  - Mappa delle azioni strategiche
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Mappa delle azioni strategiche
+  adversarial: false
+
+- id: ts3_medium_04
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    Nella "Mappa delle azioni strategiche", quante e quali sono le azioni specifiche previste per la macroarea "Formazione"?
+  answer: >
+    Sono previste sette azioni (da F.1 a F.7): percorsi per l'avvicinamento all'IA alla scuola, mobilità, didattica diffusa nei corsi di laurea, potenziamento del dottorato nazionale, programmi di upskilling e reskilling, educazione all'utilizzo degli strumenti, e corsi ITS focalizzati sull'IA[cite: 2].
+  ground_truth: >
+    Sono previste sette azioni (da F.1 a F.7): percorsi per l'avvicinamento all'IA alla scuola, mobilità, didattica diffusa nei corsi di laurea, potenziamento del dottorato nazionale, programmi di upskilling e reskilling, educazione all'utilizzo degli strumenti, e corsi ITS focalizzati sull'IA[cite: 2].
+  article_refs:
+  - Mappa delle azioni strategiche
+  contexts:
+  - Strategia italiana per l'Intelligenza Artificiale 2024-2026 – Mappa delle azioni strategiche
+  adversarial: false

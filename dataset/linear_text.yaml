@@ -1,0 +1,128 @@
+- id: ts4_short_01
+  test_set: 4
+  answer_type: short
+  difficulty: easy
+  question: >
+    Who is the protagonist of Crime and Punishment as discussed in the text?
+  answer: >
+    The protagonist of the novel is a complex individual named Rodian Romanovitch Raskolnikov[cite: 3].
+  ground_truth: >
+    The protagonist of the novel is a complex individual named Rodian Romanovitch Raskolnikov[cite: 3].
+  article_refs:
+  - Paragraph 4
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_short_02
+  test_set: 4
+  answer_type: short
+  difficulty: easy
+  question: >
+    Which specific themes does the author choose to focus on in this critical analysis?
+  answer: >
+    The author chooses to focus mainly on the themes of alienation, causality, nihilism, and the idea of punishment itself[cite: 3].
+  ground_truth: >
+    The author chooses to focus mainly on the themes of alienation, causality, nihilism, and the idea of punishment itself[cite: 3].
+  article_refs:
+  - Paragraph 8
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_short_03
+  test_set: 4
+  answer_type: short
+  difficulty: easy
+  question: >
+    How is punishment envisioned by the character Svidrigaïlov?
+  answer: >
+    Svidrigaïlov envisions punishment as a dirty room filled with complimenting crawling dirty animals[cite: 3].
+  ground_truth: >
+    Svidrigaïlov envisions punishment as a dirty room filled with complimenting crawling dirty animals[cite: 3].
+  article_refs:
+  - Paragraph 10
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_short_04
+  test_set: 4
+  answer_type: short
+  difficulty: easy
+  question: >
+    According to the bibliography, what is the title and URL of the source authored by Karl Marx?
+  answer: >
+    The source authored by Karl Marx is titled "Marxism & Alienation", and the provided URL is <https://www.marxists.org/subject/alienation/index.htm>[cite: 3].
+  ground_truth: >
+    The source authored by Karl Marx is titled "Marxism & Alienation", and the provided URL is <https://www.marxists.org/subject/alienation/index.htm>[cite: 3].
+  article_refs:
+  - Bibliography
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_medium_01
+  test_set: 4
+  answer_type: medium
+  difficulty: medium
+  question: >
+    How does the author describe Raskolnikov's relationship with fear from the beginning to the end of the novel?
+  answer: >
+    Raskolnikov begins as fearless in order to commit his crime, becomes fearful afterward, and ultimately reverts back to a fearful, apologetic citizen[cite: 3]. By the end of the novel, he returns to love, which strips him of his hatred for the world[cite: 3].
+  ground_truth: >
+    Raskolnikov begins as fearless in order to commit his crime, becomes fearful afterward, and ultimately reverts back to a fearful, apologetic citizen[cite: 3]. By the end of the novel, he returns to love, which strips him of his hatred for the world[cite: 3].
+  article_refs:
+  - Paragraph 16
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_medium_02
+  test_set: 4
+  answer_type: medium
+  difficulty: medium
+  question: >
+    According to the author, why does the ending of Crime and Punishment feel unrealistic compared to works like American Psycho?
+  answer: >
+    The author finds the ending unrealistic because Raskolnikov finds acceptance and a confounding love for Sonya, which turns him into an ordinary remorseful man[cite: 3]. In contrast, characters in works like American Psycho seem more realistic because they maintain a superior sense of themselves and remain steadfast in their commitment to their ideologies without seeking redemption[cite: 3].
+  ground_truth: >
+    The author finds the ending unrealistic because Raskolnikov finds acceptance and a confounding love for Sonya, which turns him into an ordinary remorseful man[cite: 3]. In contrast, characters in works like American Psycho seem more realistic because they maintain a superior sense of themselves and remain steadfast in their commitment to their ideologies without seeking redemption[cite: 3].
+  article_refs:
+  - Paragraph 13
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_medium_03
+  test_set: 4
+  answer_type: medium
+  difficulty: medium
+  question: >
+    Which source from the bibliography is used to draw comparisons with the American film/novel "Psycho", and what is its URL?
+  answer: >
+    The bibliography references a source by Richard Brody titled "The Greatness of 'Psycho'" to support this comparison, with the URL <https://www.newyorker.com/culture/richard-brody/the-greatness-of-psycho>[cite: 3].
+  ground_truth: >
+    The bibliography references a source by Richard Brody titled "The Greatness of 'Psycho'" to support this comparison, with the URL <https://www.newyorker.com/culture/richard-brody/the-greatness-of-psycho>[cite: 3].
+  article_refs:
+  - Bibliography
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false
+
+- id: ts4_long_01
+  test_set: 4
+  answer_type: long
+  difficulty: hard
+  question: >
+    Elaborate on the author's argument regarding Raskolnikov's alienation and the true timeline of his punishment.
+  answer: >
+    The author argues that Raskolnikov is enveloped in a larger systemic oppression that ultimately leads him to commit murders[cite: 3]. Drawing on Karl Marx's concept of alienation as a process of marginalizing an individual who lacks conformity, the author suggests that Raskolnikov's fate is almost justifiable within such a strict system[cite: 3]. Crucially, the author posits that Raskolnikov is actually punished for being deviant long before he ever commits a crime, and is subsequently punished again for acting the way he was forced to act in the first place[cite: 3].
+  ground_truth: >
+    The author argues that Raskolnikov is enveloped in a larger systemic oppression that ultimately leads him to commit murders[cite: 3]. Drawing on Karl Marx's concept of alienation as a process of marginalizing an individual who lacks conformity, the author suggests that Raskolnikov's fate is almost justifiable within such a strict system[cite: 3]. Crucially, the author posits that Raskolnikov is actually punished for being deviant long before he ever commits a crime, and is subsequently punished again for acting the way he was forced to act in the first place[cite: 3].
+  article_refs:
+  - Paragraph 13
+  - Paragraph 14
+  contexts:
+  - Crime_and_Punishment_Critical_Analysis.pdf
+  adversarial: false

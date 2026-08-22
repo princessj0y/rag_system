@@ -1,0 +1,111 @@
+- id: ts5_short_01
+  test_set: 5
+  answer_type: short
+  difficulty: easy
+  question: >
+    A quanto ammontano le risorse complessive disponibili per l'Avviso Pubblico PRO.VI 2025/2026 e qual è la quota di co-finanziamento?
+  answer: >
+    Le risorse complessive ammontano a € 100.000, di cui € 20.000 rappresentano la quota di co-finanziamento a carico dell'Ambito Territoriale Sociale di Crema[cite: 4].
+  ground_truth: >
+    Le risorse complessive ammontano a € 100.000, di cui € 20.000 rappresentano la quota di co-finanziamento a carico dell'Ambito Territoriale Sociale di Crema[cite: 4].
+  article_refs:
+  - RISORSE DISPONIBILI
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false
+
+- id: ts5_short_02
+  test_set: 5
+  answer_type: short
+  difficulty: easy
+  question: >
+    In quale periodo temporale è possibile presentare le domande per l'accesso ai benefici dell'Avviso?
+  answer: >
+    Le domande potranno essere presentate dall'8/04/2025 al 12/05/2025 entro le ore 12.00[cite: 4].
+  ground_truth: >
+    Le domande potranno essere presentate dall'8/04/2025 al 12/05/2025 entro le ore 12.00[cite: 4].
+  article_refs:
+  - PRESENTAZIONE DELLA DOMANDA
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false
+
+- id: ts5_short_03
+  test_set: 5
+  answer_type: short
+  difficulty: easy
+  question: >
+    La Misura Pro.vi è compatibile con altri finanziamenti pubblici, come la Misura B1 o B2?
+  answer: >
+    No, la Misura Pro.vi è incompatibile con qualsiasi altro finanziamento pubblico, incluse le Misure B1 e B2, che sostenga attività afferenti alla medesima macroarea[cite: 4].
+  ground_truth: >
+    No, la Misura Pro.vi è incompatibile con qualsiasi altro finanziamento pubblico, incluse le Misure B1 e B2, che sostenga attività afferenti alla medesima macroarea[cite: 4].
+  article_refs:
+  - DESTINATARI E INCOMPATIBILITA'
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false
+
+- id: ts5_medium_01
+  test_set: 5
+  answer_type: medium
+  difficulty: medium
+  question: >
+    Quali sono i limiti ISEE previsti per poter accedere agli interventi dell'Avviso Pubblico PRO.VI?
+  answer: >
+    I destinatari devono essere in possesso di un ISEE sociosanitario minore o uguale a € 30.000,00[cite: 4]. In alternativa, per le persone con un grado di disabilità inferiore al 67%, è ammesso un ISEE ordinario minore o uguale a € 45.000,00[cite: 4].
+  ground_truth: >
+    I destinatari devono essere in possesso di un ISEE sociosanitario minore o uguale a € 30.000,00[cite: 4]. In alternativa, per le persone con un grado di disabilità inferiore al 67%, è ammesso un ISEE ordinario minore o uguale a € 45.000,00[cite: 4].
+  article_refs:
+  - DESTINATARI E INCOMPATIBILITA'
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false
+
+- id: ts5_medium_02
+  test_set: 5
+  answer_type: medium
+  difficulty: medium
+  question: >
+    Quali sono i criteri di priorità stabiliti per la formulazione delle graduatorie di ammissione al progetto?
+  answer: >
+    Verrà data priorità assoluta alle persone che hanno già attivo un Progetto di vita Indipendente all'interno di una forma di "abitare in autonomia" e che hanno concluso il percorso di uscita dal nucleo familiare d'origine[cite: 4]. In secondo ordine, saranno favorite le persone che intendono iniziare un percorso di avvicinamento tramite palestre per l'autonomia, destinato a esitare entro tre anni nell'uscita dal nucleo familiare[cite: 4]. Infine, si considereranno le persone non incluse nei punti precedenti[cite: 4].
+  ground_truth: >
+    Verrà data priorità assoluta alle persone che hanno già attivo un Progetto di vita Indipendente all'interno di una forma di "abitare in autonomia" e che hanno concluso il percorso di uscita dal nucleo familiare d'origine[cite: 4]. In secondo ordine, saranno favorite le persone che intendono iniziare un percorso di avvicinamento tramite palestre per l'autonomia, destinato a esitare entro tre anni nell'uscita dal nucleo familiare[cite: 4]. Infine, si considereranno le persone non incluse nei punti precedenti[cite: 4].
+  article_refs:
+  - CRITERI DI PRIORITA' E COMMISSIONE
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false
+
+- id: ts5_long_01
+  test_set: 5
+  answer_type: long
+  difficulty: hard
+  question: >
+    Quali sono le regole, gli importi e le esclusioni specifiche stabilite per la Macroarea 1 relativa all'Assistente Personale?
+  answer: >
+    Per la Macroarea 1, il contributo è riconosciuto fino a un massimo di 800,00 euro mensili per progetto, a condizione che l'assistente personale sia contrattualizzato per almeno 10 ore a settimana[cite: 4]. L'assistente deve essere scelto e assunto direttamente dal beneficiario, facendo di norma riferimento al contratto collettivo nazionale (CCNL) del lavoro domestico[cite: 4]. Tuttavia, sono rigorosamente esclusi dal finanziamento i costi relativi alla registrazione del contratto, le spese di tenuta della contabilità (come buste paga e calcolo ferie/contributi), le spese di assicurazione per infortuni e le spese per il Servizio di Assistenza Domiciliare (SAD) già erogate[cite: 4].
+  ground_truth: >
+    Per la Macroarea 1, il contributo è riconosciuto fino a un massimo di 800,00 euro mensili per progetto, a condizione che l'assistente personale sia contrattualizzato per almeno 10 ore a settimana[cite: 4]. L'assistente deve essere scelto e assunto direttamente dal beneficiario, facendo di norma riferimento al contratto collettivo nazionale (CCNL) del lavoro domestico[cite: 4]. Tuttavia, sono rigorosamente esclusi dal finanziamento i costi relativi alla registrazione del contratto, le spese di tenuta della contabilità (come buste paga e calcolo ferie/contributi), le spese di assicurazione per infortuni e le spese per il Servizio di Assistenza Domiciliare (SAD) già erogate[cite: 4].
+  article_refs:
+  - INTERVENTI FINANZIABILI - 1 Macroarea
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false
+
+- id: ts5_long_02
+  test_set: 5
+  answer_type: long
+  difficulty: hard
+  question: >
+    Come viene disciplinato l'intervento "Palestre autonomia" all'interno della Macroarea 3, inclusi i limiti temporali e i requisiti progettuali?
+  answer: >
+    L'intervento "Palestre autonomia" prevede il riconoscimento delle sole spese per il personale educativo, per un contributo massimo complessivo di 3.500,00 euro[cite: 4]. Tale percorso ha una durata massima di 3 anni, e durante l'ultimo anno il beneficiario deve necessariamente individuare una forma residenziale e avviare il progetto formale di abitare in autonomia[cite: 4]. Al fine di corrispondere a reali tempi di vita, le esperienze di questo ultimo anno devono avvenire prioritariamente in giorni di routine e non solo nei fine settimana[cite: 4]. Inoltre, le persone prese in carico tramite questo intervento PRO.VI non potranno contemporaneamente accedere al percorso di accompagnamento per l'autonomia previsto dalla misura Dopo di Noi (DDN)[cite: 4].
+  ground_truth: >
+    L'intervento "Palestre autonomia" prevede il riconoscimento delle sole spese per il personale educativo, per un contributo massimo complessivo di 3.500,00 euro[cite: 4]. Tale percorso ha una durata massima di 3 anni, e durante l'ultimo anno il beneficiario deve necessariamente individuare una forma residenziale e avviare il progetto formale di abitare in autonomia[cite: 4]. Al fine di corrispondere a reali tempi di vita, le esperienze di questo ultimo anno devono avvenire prioritariamente in giorni di routine e non solo nei fine settimana[cite: 4]. Inoltre, le persone prese in carico tramite questo intervento PRO.VI non potranno contemporaneamente accedere al percorso di accompagnamento per l'autonomia previsto dalla misura Dopo di Noi (DDN)[cite: 4].
+  article_refs:
+  - INTERVENTI FINANZIABILI - 3 Macroarea
+  contexts:
+  - 0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf
+  adversarial: false

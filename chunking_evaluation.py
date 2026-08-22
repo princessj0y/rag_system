@@ -42,6 +42,9 @@ files = [
     # ("./test/cross-ref/Kernel.pdf", "pi-cmn3q02a805ch0gpk1yqwpuri", 'eng', "./dataset/cross_referential_dataset.yaml"),
     # ("./test/cross-ref/Operating_system.pdf", "pi-cmn3p5efs00nhlfpka5hmmlto", 'eng', "./dataset/cross_referential_dataset.yaml"),
     # ("./test/cross-ref/Page_fault.pdf", "pi-cmn3p5efs00nhlfpka5hfeato", 'eng', "./dataset/cross_referential_dataset.yaml"),
+    ("./test/Strategia_italiana_per_l_Intelligenza_artificiale_2024-2026.pdf", "pi-cmt4jk4it01uh01p5tkbl7bgd", 'ita', "./dataset/agid.yaml"),
+    ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmt4jkih901ui01p5h5r17o3s", 'eng', "./dataset/linear_text.yaml"),
+    ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmt4jkwcs01uj01p5u7ltv20c", 'ita', "./dataset/avviso_pubblico.yaml"),
 ]
 
 # Metodi di chunking
@@ -61,8 +64,8 @@ chunking_strategies = {
     "Sliding Window Chunking": run_sliding_window,
     #"Agentic Chunking Phi3": process_agentic_phi3,
     #"Agentic Chunking llama3": process_agentic_llama3,
-    "Agentic Chunking gpt-oss": run_agentic_chunking,
-    "Agentic Enrich Chunking gpt-oss": run_agentic_enrich_chunking,
+    "Agentic Chunking": run_agentic_chunking,
+    "Agentic Enrich Chunking": run_agentic_enrich_chunking,
     "PageIndex": None,
 }
 

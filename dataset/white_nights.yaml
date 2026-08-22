@@ -1,0 +1,95 @@
+- id: ts6_short_01
+  test_set: 6
+  answer_type: short
+  difficulty: easy
+  question: >
+    Why does the narrator feel so lonely and despondent at the beginning of the story?
+  answer: >
+    The narrator feels lonely because everyone he is accustomed to seeing in Petersburg is packing up and leaving the city for their summer villas[cite: 5].
+  ground_truth: >
+    The narrator feels lonely because everyone he is accustomed to seeing in Petersburg is packing up and leaving the city for their summer villas[cite: 5].
+  article_refs:
+  - First Night
+  contexts:
+  - White Nights - First Night.pdf
+  adversarial: false
+
+- id: ts6_short_02
+  test_set: 6
+  answer_type: short
+  difficulty: easy
+  question: >
+    What does the narrator use to protect the girl from the staggering gentleman?
+  answer: >
+    The narrator uses a knotted stick that he happened to be carrying in his right hand to deter the gentleman[cite: 5].
+  ground_truth: >
+    The narrator uses a knotted stick that he happened to be carrying in his right hand to deter the gentleman[cite: 5].
+  article_refs:
+  - First Night
+  contexts:
+  - White Nights - First Night.pdf
+  adversarial: false
+
+- id: ts6_short_03
+  test_set: 6
+  answer_type: short
+  difficulty: easy
+  question: >
+    How old is the narrator, and what does he confess about his experience with women?
+  answer: >
+    The narrator reveals that he is twenty-six years old and has absolutely no experience with women, having never really talked to one before[cite: 5].
+  ground_truth: >
+    The narrator reveals that he is twenty-six years old and has absolutely no experience with women, having never really talked to one before[cite: 5].
+  article_refs:
+  - First Night
+  contexts:
+  - White Nights - First Night.pdf
+  adversarial: false
+
+- id: ts6_medium_01
+  test_set: 6
+  answer_type: medium
+  difficulty: medium
+  question: >
+    How does the narrator describe his peculiar relationship with the houses in Petersburg?
+  answer: >
+    The narrator feels a deep, personal connection to the houses in the city, imagining that they speak to him and share their news as he walks by[cite: 5]. He even has favorites, and recalls being genuinely heartbroken when a charming pink house was suddenly painted yellow[cite: 5].
+  ground_truth: >
+    The narrator feels a deep, personal connection to the houses in the city, imagining that they speak to him and share their news as he walks by[cite: 5]. He even has favorites, and recalls being genuinely heartbroken when a charming pink house was suddenly painted yellow[cite: 5].
+  article_refs:
+  - First Night
+  contexts:
+  - White Nights - First Night.pdf
+  adversarial: false
+
+- id: ts6_medium_02
+  test_set: 6
+  answer_type: medium
+  difficulty: medium
+  question: >
+    What is the strict condition the girl sets before agreeing to meet the narrator the following night?
+  answer: >
+    The girl agrees to meet him the next day on the strict condition that he must not fall in love with her, emphasizing that she is only ready for friendship[cite: 5].
+  ground_truth: >
+    The girl agrees to meet him the next day on the strict condition that he must not fall in love with her, emphasizing that she is only ready for friendship[cite: 5].
+  article_refs:
+  - First Night
+  contexts:
+  - White Nights - First Night.pdf
+  adversarial: false
+
+- id: ts6_long_01
+  test_set: 6
+  answer_type: long
+  difficulty: hard
+  question: >
+    Explain how the narrator's mood changes when he leaves the city limits, and how he uses a metaphor to describe nature's spring awakening.
+  answer: >
+    When the narrator wanders past the city gates into the fields, he instantly feels lighthearted, as if a great burden has been lifted from his soul, and he compares the joyous feeling to suddenly finding himself in Italy[cite: 5]. He beautifully compares the sudden burst of spring in Petersburg to a frail, consumptive girl who unexpectedly becomes radiant and inexplicably lovely for a fleeting moment[cite: 5]. He notes that this momentary beauty is tragic because it fades too quickly, leaving the girl pale and pensive once again before one even has time to love her[cite: 5].
+  ground_truth: >
+    When the narrator wanders past the city gates into the fields, he instantly feels lighthearted, as if a great burden has been lifted from his soul, and he compares the joyous feeling to suddenly finding himself in Italy[cite: 5]. He beautifully compares the sudden burst of spring in Petersburg to a frail, consumptive girl who unexpectedly becomes radiant and inexplicably lovely for a fleeting moment[cite: 5]. He notes that this momentary beauty is tragic because it fades too quickly, leaving the girl pale and pensive once again before one even has time to love her[cite: 5].
+  article_refs:
+  - First Night
+  contexts:
+  - White Nights - First Night.pdf
+  adversarial: false

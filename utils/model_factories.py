@@ -26,6 +26,10 @@ ollama_api_keys = [
 if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
     _ragas_global_semaphore = asyncio.Semaphore(3)
+elif "UNIMI_API_KEY" in os.environ:
+    model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
+    #model_name = "Qwen/Qwen3-8B"
+    _ragas_global_semaphore = asyncio.Semaphore(1)
 elif len(ollama_api_keys) > 0:
     model_name = "gpt-oss:120b-cloud"
     _ragas_global_semaphore = asyncio.Semaphore(3 * len(ollama_api_keys))
@@ -84,6 +88,19 @@ def create_default_model(**kwargs):
             google_api_key=os.environ.get("GOOGLE_API_KEY"),
             **kwargs
         )
+    elif "UNIMI_API_KEY" in os.environ:
+        from langchain_openai import ChatOpenAI
+        # Merge extra_body if already provided in kwargs
+        extra_body = kwargs.pop("extra_body", {})
+        extra_body.setdefault("chat_template_kwargs", {"enable_thinking": False})
+        llm = ChatOpenAI(
+            model=model_name,
+            api_key=os.environ.get("UNIMI_API_KEY"),
+            base_url="https://open-webui.ricerca.sesar.di.unimi.it/openai",
+            extra_body=extra_body,
+            **kwargs
+        )
+
     elif len(ollama_api_keys) > 0:
         keys = list(ollama_api_keys)
         random.shuffle(keys)
@@ -154,7 +171,6 @@ def create_ragas_model(model, provider="openai", **kwargs):
     return llm_factory(model=model, provider=provider, **kwargs)
 
 def create_default_ragas_model_iterator():
-    models = []
     if "GOOGLE_API_KEY" in os.environ:
         logger.info("Running with Gemini as LLM...")
         # TODO: limit gemini concurrency with the _ragas_global_semaphore
@@ -163,6 +179,32 @@ def create_default_ragas_model_iterator():
         return itertools.cycle([
             create_ragas_model(model_name, provider="google", client=client)
         ])
+
+    elif "UNIMI_API_KEY" in os.environ:
+        logger.info("Running with Unimi as LLM...")
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(
+            api_key=os.environ.get("UNIMI_API_KEY"), 
+            base_url="https://open-webui.ricerca.sesar.di.unimi.it/openai",
+            http_client=httpx.AsyncClient(
+                transport=BoundedAsyncHttpxTransport(
+                    delegate=httpx.AsyncHTTPTransport(),
+                    semaphore=_ragas_global_semaphore
+                ),
+                timeout=120.0
+            )
+        )
+        return itertools.cycle([create_ragas_model(
+            model_name, 
+            provider="openai", 
+            client=client,
+            #stream=True,
+            extra_body={
+                "chat_template_kwargs": {
+                    "enable_thinking": False
+                }
+            }
+        )])
     
     elif len(ollama_api_keys) > 0:
         logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) as LLM...")

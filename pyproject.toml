@@ -18,6 +18,7 @@ dependencies = [
     "langchain-google-genai>=4.2.2",
     "langchain-huggingface>=1.2.2",
     "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.1.10",
     "langchain-text-splitters>=1.1.1",
     "langchain-unstructured>=1.0.1",
     "litellm>=1.83.10",
