@@ -4,7 +4,7 @@ from utils.documents import make_chunking_document_aware
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
-def _run_fixed_size_chunking(raw_text, chunk_size=600, is_eng = False):
+def _run_fixed_size_chunking(raw_text, chunk_size=500, is_eng = False):
     from nltk.tokenize import word_tokenize
     
     # Set NLTK language
