@@ -43,8 +43,8 @@ files = [
     ("./test/cross-ref/Page_fault.pdf", "pi-cmt5x9qq1020l01p5d0ulu1st", 'eng', "./dataset/cross_referential_dataset.yaml"),
     ("./test/cross-ref/Operating_system.pdf", "pi-cmt5xaw9v020n01p5zrdfn04e", 'eng', "./dataset/cross_referential_dataset.yaml"),
     ("./test/Strategia_italiana_per_l_Intelligenza_artificiale_2024-2026.pdf", "pi-cmtlzmyiq018y01nr5fiv6m99", 'ita', "./dataset/agid.yaml"),
-    ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmt4jkih901ui01p5h5r17o3s", 'eng', "./dataset/linear_text.yaml"),
-    ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmt4jkwcs01uj01p5u7ltv20c", 'ita', "./dataset/avviso_pubblico.yaml"),
+    ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmu32mhc8000u0dnsvbfaaton", 'eng', "./dataset/linear_text.yaml"),
+    ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmu5kq1gk003g0cntntnsjct9", 'ita', "./dataset/avviso_pubblico.yaml"),
     ("./test/data-driven/nearest_stars.xlsx", "pi-cmtde4fni00c801ns23wwb9jt", 'eng', "./dataset/data_driven_dataset.yaml"),
     ("./test/data-driven/customers_list.csv", "pi-cmthhxedq010301nsfb7vm5vf", 'eng', "./dataset/customers_list_dataset.yaml"),
 ]
@@ -142,7 +142,7 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_ids, 
     else:
         dataset = retrieve_chunking_dataset(experiment_name, chunking_function, raw_text, is_eng, dataset, source_name)
 
-    ts = timestamp.strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now()
     experiment_name = f"{ts}_{experiment_name}"
 
     # Lo usa solo la faithfulness:
