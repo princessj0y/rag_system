@@ -32,12 +32,13 @@ if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
     _ragas_global_semaphore = asyncio.Semaphore(3)
 elif "UNIMI_API_KEY" in os.environ:
-    model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
-    #model_name = "Qwen/Qwen3-8B"
+    # model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
+    model_name = "Qwen/Qwen3-8B"
     _ragas_global_semaphore = asyncio.Semaphore(5)
     timeout = 5 * 60
 elif len(ollama_api_keys) > 0:
     model_name = "gpt-oss:120b-cloud"
+    # model_name = "gemma4"
     _ragas_global_semaphore = asyncio.Semaphore(3 * len(ollama_api_keys))
 else:
     model_name = "phi3"
@@ -128,6 +129,9 @@ def create_default_model(**kwargs):
         )
     elif "UNIMI_API_KEY" in os.environ:
         from langchain_openai import ChatOpenAI
+        if kwargs.pop("format", None) == "json":
+            kwargs["response_format"] = {"type": "json_object"}
+        kwargs.pop("system", None)
         # Merge extra_body if already provided in kwargs
         extra_body = kwargs.pop("extra_body", {})
         extra_body.setdefault("chat_template_kwargs", {"enable_thinking": False})
@@ -334,10 +338,4 @@ def create_default_embedding_model_iterator(cloud_enabled=False):
             provider="litellm", #todo: why did i choose litellm? 
             api_base="http://localhost:11434",
         )
-        models.append(ragas_embedding)
-
-    iter = itertools.cycle(models)
-    # Randomize the first model used by skipping a random amount
-    for i in range(random.randint(0, len(models))):
-        next(iter)
-    return iter
+    ])
