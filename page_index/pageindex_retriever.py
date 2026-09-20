@@ -1,16 +1,19 @@
-import json
 import os
-import re
-
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, AliasChoices
 from utils.my_log import logger
-
+import json
 
 class DocumentSearchResponse(BaseModel):
-    thinking: str = Field(description="Your thinking process on which nodes are relevant to the question")
-    node_list: list[str] = Field(description="List of relevant node IDs found in the tree")
-
+    thinking: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices('thinking', 'explanation'),
+        description="Your thinking process on which nodes are relevant to the question",
+    )
+    node_list: list[str] = Field(
+        validation_alias=AliasChoices("node_list", "node_ids", "relevant_node_ids", "nodes"),
+        description="List of relevant node IDs found in the tree",
+    )
 
 prompt_template = ChatPromptTemplate.from_messages([
     (
@@ -18,105 +21,20 @@ prompt_template = ChatPromptTemplate.from_messages([
         "You are given a question and a tree structure of a document. "
         "Each node contains a node id, node title, and a corresponding summary. "
         "Your task is to find all nodes that are likely to contain the answer to the question. "
-        "Return only a JSON object with exactly these fields: {{\"thinking\": \"brief explanation\", \"node_list\": [\"node_id_1\", \"node_id_2\"]}}. "
-        "Use only the node IDs that actually exist in the tree. Do not include markdown, prose, or extra keys."
+        "Keep your 'thinking' explanation brief and concise (under 3 sentences).\n\n"
+        # Ollama's official documentation for structured outputs recommends that developers both explicitly state
+        # "return as JSON" in the text prompt and pass the JSON schema string directly into the prompt to ground
+        # the model's response.
+        # So, grab the schema as a string and inject it aggressively into the system prompt
+        "CRITICAL INSTRUCTION: You MUST return your response as a valid JSON object. "
+        "Your JSON response must strictly match this exact JSON schema:\n{schema_instructions}"
     ),
     (
         "human",
         "Question: {query}\n\n"
         "Document tree structure:\n{tree_json}"
     )
-])
-
-
-def _normalize_node_values(raw_value):
-    if raw_value is None:
-        return []
-    if isinstance(raw_value, str):
-        raw_value = [raw_value]
-    if not isinstance(raw_value, list):
-        return []
-
-    node_ids = []
-    for item in raw_value:
-        if isinstance(item, dict):
-            for key in ("node_id", "id", "nodeId"):
-                if key in item:
-                    node_ids.append(str(item[key]))
-                    break
-        elif item is not None:
-            node_ids.append(str(item))
-    return node_ids
-
-
-def _extract_json_payload(raw_content):
-    if raw_content is None:
-        return None
-
-    if isinstance(raw_content, dict):
-        return raw_content
-
-    text = str(raw_content).strip()
-    if not text:
-        return None
-
-    text = text.replace("```json", "").replace("```", "").strip()
-
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        pass
-
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        candidate = text[start:end + 1]
-        try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            pass
-
-    for key in ("node_list", "node_ids", "relevant_node_ids"):
-        pattern = rf'"{re.escape(key)}"\s*:\s*\[(.*?)\]'
-        match = re.search(pattern, text, flags=re.DOTALL)
-        if match:
-            value_text = match.group(1)
-            fragments = re.findall(r'"([^"]+)"|\b([A-Za-z0-9_.:-]+)\b', value_text)
-            values = []
-            for left, right in fragments:
-                values.append(left or right)
-            if values:
-                return {"thinking": "Selected relevant nodes from the document tree.", key: values}
-
-    return None
-
-
-def _coerce_document_response(raw_content):
-    payload = _extract_json_payload(raw_content)
-    if payload is None:
-        raise ValueError("No JSON object found in PageIndex response")
-
-    if isinstance(payload, list):
-        payload = {"thinking": "Selected relevant nodes from the document tree.", "node_list": payload}
-
-    if not isinstance(payload, dict):
-        raise ValueError(f"Unexpected PageIndex payload type: {type(payload).__name__}")
-
-    node_key = None
-    for candidate in ("node_list", "node_ids", "relevant_node_ids"):
-        if candidate in payload:
-            node_key = candidate
-            break
-
-    if node_key is None:
-        raise ValueError(f"PageIndex payload missing a node list field: {payload}")
-
-    normalized = {
-        "thinking": str(payload.get("thinking") or payload.get("explanation") or "Selected relevant nodes from the document tree."),
-        "node_list": _normalize_node_values(payload[node_key]),
-    }
-    return DocumentSearchResponse.model_validate(normalized)
-
+]).partial(schema_instructions=json.dumps(DocumentSearchResponse.model_json_schema(), indent=2))
 
 def retrieve_dataset(doc_ids, dataset):
     from pageindex import PageIndexClient
@@ -149,14 +67,17 @@ def retrieve_dataset(doc_ids, dataset):
     dataset["retrieved_contexts"] = contexts
     return dataset
 
-
 def retrieve(tree, llm, query):
     import pageindex.utils as utils
     from langchain_core.messages import HumanMessage, AIMessage
+    from langchain_core.exceptions import OutputParserException
+    from pydantic import ValidationError
 
     tree_without_text = utils.remove_fields(tree.copy(), fields=['text'])
     tree_json_str = json.dumps(tree_without_text, indent=2)
     node_map = utils.create_node_mapping(tree)
+
+    structured_llm = llm.with_structured_output(DocumentSearchResponse)
 
     messages = prompt_template.invoke({
         "query": query,
@@ -168,13 +89,12 @@ def retrieve(tree, llm, query):
         is_last_attempt = attempt == max_attempts - 1
 
         try:
-            ai_message = llm.invoke(messages)
-            raw_content = getattr(ai_message, "content", str(ai_message))
-            response = _coerce_document_response(raw_content)
-        except (ValidationError, ValueError, TypeError, AttributeError) as e:
+            response: DocumentSearchResponse = structured_llm.invoke(messages)
+        except (ValidationError, OutputParserException) as e:
             if is_last_attempt:
                 logger.error(f"PageIndex schema validation failed after {max_attempts} attempts: {e}")
                 raise e
+            # Extract the raw output if OutputParserException captured it
             logger.warning(f"PageIndex schema validation failed on attempt {attempt + 1}; retrying: {e}")
             raw_content = getattr(e, "llm_output", None) or getattr(e, "observation", None)
             messages.append(AIMessage(content=str(raw_content) if raw_content else "[Invalid JSON / Schema Output]"))
@@ -202,7 +122,7 @@ def retrieve(tree, llm, query):
             continue
 
         if invalid_ids:
-            logger.warning(f"PageIndex returned invalid node IDs {invalid_ids}; ignoring them")
+            logger.warning(f"Model returned some invalid node IDs {invalid_ids}, which could not be found in the tree node map. Ignoring.")
 
         logger.info(f"PageIndex: selected {len(resolved_texts)} node(s) for query")
         return "\n\n".join(resolved_texts)

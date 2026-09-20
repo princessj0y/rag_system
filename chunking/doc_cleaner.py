@@ -53,6 +53,7 @@ def clean_textful_doc(file_path, is_eng):
         loader = UnstructuredLoader(
             file_path=file_path,
             strategy="hi_res",
+            # https://tesseract-ocr.github.io/tessdoc/Data-Files-in-different-versions.html
             languages=['eng' if is_eng else 'ita'],
             skip_headers_and_footers=True, # strips page numbers, repetitive document titles at the top of pages, and legal footers
             # rip images and tables and save them

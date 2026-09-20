@@ -42,9 +42,9 @@ files = [
     ("./test/cross-ref/Kernel.pdf", "pi-cmt5x1dyw020j01p5uth4sf2t", 'eng', "./dataset/cross_referential_dataset.yaml"),
     ("./test/cross-ref/Page_fault.pdf", "pi-cmt5x9qq1020l01p5d0ulu1st", 'eng', "./dataset/cross_referential_dataset.yaml"),
     ("./test/cross-ref/Operating_system.pdf", "pi-cmt5xaw9v020n01p5zrdfn04e", 'eng', "./dataset/cross_referential_dataset.yaml"),
-    ("./test/Strategia_italiana_per_l_Intelligenza_artificiale_2024-2026.pdf", "pi-cmtlzmyiq018y01nr5fiv6m99", 'ita', "./dataset/agid.yaml"),
-    ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmu32mhc8000u0dnsvbfaaton", 'eng', "./dataset/linear_text.yaml"),
-    ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmu5kq1gk003g0cntntnsjct9", 'ita', "./dataset/avviso_pubblico.yaml"),
+    ("./test/Strategia_italiana_per_l_Intelligenza_artificiale_2024-2026.pdf", "pi-cmt4jk4it01uh01p5tkbl7bgd", 'ita', "./dataset/agid.yaml"),
+    ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmt4jkih901ui01p5h5r17o3s", 'eng', "./dataset/linear_text.yaml"),
+    ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmt4jkwcs01uj01p5u7ltv20c", 'ita', "./dataset/avviso_pubblico.yaml"),
     ("./test/data-driven/nearest_stars.xlsx", "pi-cmtde4fni00c801ns23wwb9jt", 'eng', "./dataset/data_driven_dataset.yaml"),
     ("./test/data-driven/customers_list.csv", "pi-cmthhxedq010301nsfb7vm5vf", 'eng', "./dataset/customers_list_dataset.yaml"),
 ]
@@ -130,19 +130,19 @@ def retrieve_chunking_dataset(
     dataset["retrieved_contexts"] = contexts
     return dataset
 
-async def evaluate_method(chunking_name, chunking_function, page_index_doc_ids, raw_text, is_eng, dataset, source_name):
-    experiment_name = f"{model_name}_{embeddings_model_name}_{chunking_name.lower().replace(' ', '-')}_{'EN' if is_eng else 'IT'}"
+async def evaluate_method(file_name, chunking_name, chunking_function, page_index_doc_id, timestamp, raw_text, is_eng, dataset, source_name):
+    experiment_name = f"{file_name}_{model_name}_{embeddings_model_name}_{chunking_name.lower().replace(' ', '-')}_{'EN' if is_eng else 'IT'}"
     # Replace anything that isn't alphanumeric, dash, or underscore with a dash
     experiment_name = re.sub(r'[^a-zA-Z0-9_-]', '-', experiment_name)
     # Strip leading/trailing punctuation
     experiment_name = experiment_name.strip('_-')
 
     if chunking_function == None:
-        dataset = retrieve_pageindex_dataset(page_index_doc_ids, dataset)
+        dataset = retrieve_pageindex_dataset(page_index_doc_id, dataset)
     else:
         dataset = retrieve_chunking_dataset(experiment_name, chunking_function, raw_text, is_eng, dataset, source_name)
 
-    ts = datetime.now()
+    ts = timestamp.strftime("%Y%m%d_%H%M%S")
     experiment_name = f"{ts}_{experiment_name}"
 
     # Lo usa solo la faithfulness:
@@ -305,8 +305,8 @@ async def evaluate_method(chunking_name, chunking_function, page_index_doc_ids, 
             df['answer_correctness'].mean()
     )
 
-async def evaluate_file(file_name, page_index_doc_ids, is_eng, dataset_path, run_page_index=True):
-    logger.info(f"Analysing file {file_name} [{page_index_doc_ids}]...")
+async def evaluate_file(file_name, page_index_doc_id, is_eng, dataset_path):
+    logger.info(f"Analysing file {file_name} [{page_index_doc_id}]")
     raw_text = clean_doc(file_name, is_eng)
 
     golden_dataset = load_dataset(dataset_path)
@@ -315,13 +315,12 @@ async def evaluate_file(file_name, page_index_doc_ids, is_eng, dataset_path, run
     # Esegui benchmark
     table_data = []
     for name, chunking_function in tqdm(chunking_strategies.items(), desc="Chunking strategies"):
-        if name == "PageIndex" and not run_page_index:
-            continue
-
         async with async_mdc(method=name):
             logger.info(f"Metodo {name}...")
             try:
-                precision, recall, entity_recall, faithfulness, noise_sensitivity, answer_relevancy, answer_correctness = await evaluate_method(name, chunking_function, page_index_doc_ids, raw_text, is_eng, golden_dataset, os.path.splitext(os.path.basename(file_name))[0])
+                source_name = os.path.splitext(os.path.basename(file_name))[0]
+                precision, recall, entity_recall, faithfulness, noise_sensitivity, answer_relevancy, answer_correctness = (
+                    await evaluate_method(file_name, name, chunking_function, page_index_doc_id, timestamp, raw_text, is_eng, golden_dataset, source_name))
                 table_data.append([name, f"{precision:.4f}", f"{recall:.4f}", f"{entity_recall:.4f}", f"{faithfulness:.4f}", f"{noise_sensitivity:.4f}", f"{answer_relevancy:.4f}", f"{answer_correctness:.4f}"])
                 if faithfulness > 0.75 or faithfulness:
                     logger.info("OK")
@@ -341,16 +340,8 @@ async def evaluate_file(file_name, page_index_doc_ids, is_eng, dataset_path, run
 
 
 async def main():
-    page_index_doc_ids = [doc_id for _, doc_id, _, _ in files]
-
-    for file_index, (file_name, _, language, dataset_path) in enumerate(tqdm(files, desc="Files")):
+    for (file_name, page_index_doc_id, language, dataset_path) in tqdm(files, desc="Files"):
         async with async_mdc(file_name=file_name):
-            await evaluate_file(
-                file_name,
-                page_index_doc_ids,
-                (language == 'eng'),
-                dataset_path,
-                run_page_index=(file_index == 0),
-            )
+            await evaluate_file(file_name, page_index_doc_id, (language == 'eng'), dataset_path)
 
 asyncio.run(main())

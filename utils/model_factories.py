@@ -32,8 +32,8 @@ if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
     _ragas_global_semaphore = asyncio.Semaphore(3)
 elif "UNIMI_API_KEY" in os.environ:
-    # model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
-    model_name = "Qwen/Qwen3-8B"
+    model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
+    #model_name = "Qwen/Qwen3-8B"
     _ragas_global_semaphore = asyncio.Semaphore(5)
     timeout = 5 * 60
 elif len(ollama_api_keys) > 0:
@@ -292,13 +292,11 @@ def create_default_embedding_model_iterator(cloud_enabled=False):
         logger.info("Running with Gemini for embeddings...")
         from google import genai
         client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
-        return itertools.cycle([
-            create_ragas_embedding_model(
+        return itertools.cycle([ create_ragas_embedding_model(
             embeddings_model_name,
             provider="google",
             client=client
-            )
-        ])
+        ) ])
     
     elif cloud_enabled and len(ollama_api_keys) > 0:
         logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) for embeddings...")
@@ -310,12 +308,8 @@ def create_default_embedding_model_iterator(cloud_enabled=False):
                 client = AsyncOpenAI(
                     api_key="ollama", 
                     base_url="https://ollama.com/v1",
-                    http_client=httpx.AsyncClient(
-                        transport=BoundedAsyncHttpxTransport(
+                    http_client=boundedHttpxAsyncClient(
                             delegate=AsyncKeyRotationHttpxTransport(shuffled_keys=keys),
-                            semaphore=_ragas_global_semaphore
-                        ),
-                        timeout=120.0,
                     )
                 )
                 yield create_ragas_embedding_model(
