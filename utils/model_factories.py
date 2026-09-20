@@ -287,8 +287,11 @@ def create_ragas_embedding_model(model, provider="openai", **kwargs):
     from ragas.embeddings.base import embedding_factory
     return embedding_factory(model=model, provider=provider, interface="modern", **kwargs)
 
-def create_default_embedding_model_iterator(cloud_enabled=False):
-    if cloud_enabled and "GOOGLE_API_KEY" in os.environ:
+def create_default_embedding_model_iterator():
+    if 'gemini' in embeddings_model_name:
+        if "GOOGLE_API_KEY" not in os.environ:
+            raise f"no GOOGLE_API_KEY env var found, cannot use {embeddings_model_name}"
+
         logger.info("Running with Gemini for embeddings...")
         from google import genai
         client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
@@ -298,7 +301,10 @@ def create_default_embedding_model_iterator(cloud_enabled=False):
             client=client
         ) ])
     
-    elif cloud_enabled and len(ollama_api_keys) > 0:
+    elif 'cloud' in embeddings_model_name:
+        if len(ollama_api_keys) == 0:
+            raise f"no OLLAMA_API_KEY env var found, cannot use {embeddings_model_name}"
+
         logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) for embeddings...")
         from openai import AsyncOpenAI
         def model_generator():
