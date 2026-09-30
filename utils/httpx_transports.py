@@ -15,6 +15,7 @@ class SyncKeyRotationHttpxTransport(httpx.BaseTransport):
         while True:
             active_key = self.keys[self.current_index]
             request.headers["Authorization"] = f"Bearer {active_key}"
+            
             try:
                 response = self.delegate.handle_request(request)
             except Exception as e:
@@ -25,6 +26,7 @@ class SyncKeyRotationHttpxTransport(httpx.BaseTransport):
             
             self.current_index += 1
             if self.current_index >= self.total_keys:
+                self.current_index = 0
                 raise httpx.HTTPStatusError("Ollama keys completely exhausted.", request=request, response=response)
     
     def close(self) -> None:
@@ -53,6 +55,7 @@ class AsyncKeyRotationHttpxTransport(httpx.AsyncBaseTransport):
             
             self.current_index += 1
             if self.current_index >= self.total_keys:
+                self.current_index = 0
                 raise httpx.HTTPStatusError("Ollama keys completely exhausted.", request=request, response=response)
 
     async def aclose(self) -> None:
