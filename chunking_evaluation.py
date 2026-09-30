@@ -45,7 +45,7 @@ files = [
     ("./test/Strategia_italiana_per_l_Intelligenza_artificiale_2024-2026.pdf", "pi-cmt4jk4it01uh01p5tkbl7bgd", 'ita', "./dataset/agid.yaml"),
     ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmt4jkih901ui01p5h5r17o3s", 'eng', "./dataset/linear_text.yaml"),
     ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmt4jkwcs01uj01p5u7ltv20c", 'ita', "./dataset/avviso_pubblico.yaml"),
-    ("./test/data-driven/nearest_stars.xlsx", "pi-cmtde4fni00c801ns23wwb9jt", 'eng', "./dataset/data_driven_dataset.yaml"),
+    ("./test/data-driven/nearest_stars.xlsx", "pi-cmuoke6h5000b0bp8btsxqfhx", 'eng', "./dataset/data_driven_dataset.yaml"),
     ("./test/data-driven/customers_list.csv", "pi-cmthhxedq010301nsfb7vm5vf", 'eng', "./dataset/customers_list_dataset.yaml"),
 ]
 
