@@ -3,7 +3,7 @@ logs/*
 test/*.md
 test/*.csv
 test/*.png
-test/*.pageindex.json
+test/**/*.pageindex.json
 experiments/**
 tmp/**
 chroma_eval_cache/**
