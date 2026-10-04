@@ -37,9 +37,9 @@ elif "UNIMI_API_KEY" in os.environ:
     _ragas_global_semaphore = asyncio.Semaphore(5)
     timeout = 5 * 60
 elif len(ollama_api_keys) > 0:
-    #model_name = "gpt-oss:120b-cloud"
-    model_name = "gemma4:31b-cloud"
-    _ragas_global_semaphore = asyncio.Semaphore(3 * len(ollama_api_keys))
+    model_name = "gpt-oss:120b-cloud"
+    #model_name = "gemma4:31b-cloud"
+    _ragas_global_semaphore = asyncio.Semaphore(min(5, 3 * len(ollama_api_keys)))
 else:
     model_name = "phi3"
     _ragas_global_semaphore = asyncio.Semaphore(1)

@@ -47,6 +47,7 @@ files = [
     ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmt4jkwcs01uj01p5u7ltv20c", 'ita', "./dataset/avviso_pubblico.yaml"),
     ("./test/data-driven/nearest_stars.xlsx", "pi-cmuoke6h5000b0bp8btsxqfhx", 'eng', "./dataset/data_driven_dataset.yaml"),
     ("./test/data-driven/customers_list.csv", "pi-cmthhxedq010301nsfb7vm5vf", 'eng', "./dataset/customers_list_dataset.yaml"),
+    ("./test/visual/discriminazione.jpg", "", 'ita', "./dataset/customers_list_dataset.yaml"),
 ]
 
 # Metodi di chunking
@@ -315,6 +316,9 @@ async def evaluate_file(file_name, page_index_doc_id, is_eng, dataset_path):
     # Esegui benchmark
     table_data = []
     for name, chunking_function in tqdm(chunking_strategies.items(), desc="Chunking strategies"):
+        if chunking_function is None and page_index_doc_id == '':
+            continue
+
         async with async_mdc(method=name):
             logger.info(f"Metodo {name}...")
             try:

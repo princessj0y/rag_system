@@ -75,24 +75,19 @@ def clean_textful_doc(file_path, is_eng):
     if image_docs:
         for doc in tqdm(image_docs, desc="Processing extracted images and tables"):
             img_path = doc.metadata.get("image_path")
-            if img_path and os.path.exists(img_path):
-                category = doc.metadata.get("category")
-                try:
-                    summary, md = clean_imageful_doc(img_path, 
-                                                    is_table=(category == 'Table'),
-                                                    is_eng=is_eng,
-                                                    cache_path=Path(img_path).with_suffix('.txt'))
-                except:
-                    logger.exception(f"Failed to extract {category} {img_path}, skipping it...")
-                    continue
-
-                # Put it in page_content so it gets embedded and searched
-                doc.page_content = summary
-                # Tuck a safe copy in the metadata just in case it gets chopped
-                doc.metadata["payloads"] = [{
-                    "type": f"{category.lower()}_markdown",
-                    "raw_content": md
-                }]
+            if not img_path or not os.path.exists(img_path):
+                continue 
+            
+            category = doc.metadata.get("category")
+            try:
+                clean_imageful_doc(img_path, 
+                                   document=doc,
+                                   is_table=(category == 'Table'),
+                                   is_eng=is_eng,
+                                   cache_path=Path(img_path).with_suffix('.txt'))
+            except:
+                logger.exception(f"Failed to extract {category} {img_path}, skipping it...")
+                continue
 
     # Double-tap the noise
     # Unstructured's internal skip isn't 100% reliable, so we force-drop them here (especially headers)
@@ -106,25 +101,36 @@ def clean_textful_doc(file_path, is_eng):
 
     return docs
 
-def clean_imageful_doc(file_path, is_table=False, is_eng=True, cache_path=None):
+def clean_imageful_doc(file_path, is_eng, document=None, is_table=False, cache_path=None):
     """
     Accepts an SVG, PNG, or JPG, converts SVGs in-memory, 
     and uses a local Ollama Vision LLM to extract data into structured Markdown.
     """
+    import yaml
     import base64
+    from langchain_core.documents import Document
     from langchain_core.messages import HumanMessage
+    from utils.documents import preserialize_docs
 
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
-    # Fallback to a hash-based cache file next to the original image if none is provided
-    if cache_path is None:
-        file_hash = get_file_hash(file_path)
-        cache_path = Path(file_path).with_name(f"{file_hash}.txt")
-    cache_path = Path(cache_path)
+    new_document = document is None
+    if new_document:
+        cache_dir = Path(f"./cleaned_docs_cache/{get_file_hash(file_path)}")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        cache_path = cache_dir / "summary.txt"
+        document = Document(
+            page_content="",
+            metadata={
+                "category": 'Table' if is_table else 'Image',
+                "image_path": file_path,
+            },
+        )
 
     # Check cache
-    if cache_path.exists():
+    if cache_path is not None and cache_path.exists():
         logger.info(f"Vision cache hit! Loading from {cache_path}")
         with open(cache_path, 'r', encoding='utf-8') as f:
             vision_text = f.read()
@@ -183,10 +189,10 @@ def clean_imageful_doc(file_path, is_table=False, is_eng=True, cache_path=None):
             f.write(vision_text)
 
     if not is_table:
-        return  f"Image Description:\n{vision_text}", vision_text
-    
-    # Robustly split the output using the delimiter
-    if "---PAYLOAD---" in vision_text:
+        summary = f"Image Description:\n{vision_text}"
+        payload = vision_text
+    elif "---PAYLOAD---" in vision_text:
+        # Robustly split the output using the delimiter
         parts = vision_text.split("---PAYLOAD---", 1)
 
         summary = parts[0].strip()
@@ -194,11 +200,26 @@ def clean_imageful_doc(file_path, is_table=False, is_eng=True, cache_path=None):
 
         if "---SUMMARY---" in summary:
             summary = summary.split("---SUMMARY---", 1)[1].strip()
-
-        return summary, payload
+    else: 
+        logger.warning(f"Vision LLM missed the delimiter for {file_path}. Using fallback parsing.")
+        summary = "Visual data extracted."
+        payload =  vision_text.strip()
     
-    logger.warning(f"Vision LLM missed the delimiter for {file_path}. Using fallback parsing.")
-    return "Visual data extracted.", vision_text.strip()
+    # Put it in page_content so it gets embedded and searched
+    document.page_content = summary
+    # Tuck a safe copy in the metadata just in case it gets chopped
+    document.metadata["payloads"] = [{
+        "type": f"{document.metadata.get("category").lower()}_markdown",
+        "raw_content": payload
+    }]
+
+    if new_document:
+        docs_path = cache_dir / "docs.yaml"
+        with open(docs_path, 'w', encoding='utf-8') as f:
+            yaml.dump(preserialize_docs([document]), f, allow_unicode=True, sort_keys=False)
+        logger.info(f"Saved doc output to {docs_path}")
+
+    return [document]
 
 def clean_dataful_doc(file_path, is_eng=True):
     """
