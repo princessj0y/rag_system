@@ -11,7 +11,10 @@ def load_dataset(file_name):
         "ground_truth": [],
         "reference": [],
         "contexts": [],
-        "retrieved_contexts": []
+        "retrieved_contexts": [],
+        "difficulty": [],
+        "answer_type": [],
+        "test_set": [],
     }
 
     # Extract only what Ragas needs
@@ -21,6 +24,10 @@ def load_dataset(file_name):
         # Note: Ragas specifically looks for the key 'ground_truth', not 'answer'
         dataset["ground_truth"].append(item["ground_truth"])
         dataset["reference"].append(item["ground_truth"])
+        
+        dataset["difficulty"].append(item["difficulty"])
+        dataset["answer_type"].append(item["answer_type"])
+        dataset["test_set"].append(item["test_set"])
 
     return dataset
 
