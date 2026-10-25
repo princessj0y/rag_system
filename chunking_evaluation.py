@@ -43,6 +43,7 @@ files = [
     ("./test/cross-ref/Page_fault.pdf", "pi-cmt5x9qq1020l01p5d0ulu1st", 'eng', "./dataset/cross_referential_dataset.yaml"),
     ("./test/cross-ref/Operating_system.pdf", "pi-cmt5xaw9v020n01p5zrdfn04e", 'eng', "./dataset/cross_referential_dataset.yaml"),
     ("./test/Strategia_italiana_per_l_Intelligenza_artificiale_2024-2026.pdf", "pi-cmt4jk4it01uh01p5tkbl7bgd", 'ita', "./dataset/agid.yaml"),
+    ("./test/Italian_strategy_for_artificial_intelligence_2024-2026.pdf", "", 'eng', "./dataset/agid - en.yaml"),
     ("./test/Crime_and_Punishment_Critical_Analysis.pdf", "pi-cmt4jkih901ui01p5h5r17o3s", 'eng', "./dataset/linear_text.yaml"),
     ("./test/0 -Avviso Pubblico Pro.vi 2025.2026 sito-signed.pdf", "pi-cmt4jkwcs01uj01p5u7ltv20c", 'ita', "./dataset/avviso_pubblico.yaml"),
     ("./test/data-driven/nearest_stars.xlsx", "pi-cmuoke6h5000b0bp8btsxqfhx", 'eng', "./dataset/data_driven_dataset.yaml"),

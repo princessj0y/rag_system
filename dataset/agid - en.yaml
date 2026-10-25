@@ -1,0 +1,194 @@
+- id: ts3_short_01
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    What are the main strategic macro-objectives outlined in the document?
+  answer: >
+    The macro-objectives include supporting the adoption of AI applications for production models, promoting foundational and applied scientific research, and creating favorable conditions through talent training and the efficiency of the Public Administration.
+  ground_truth: >
+    The macro-objectives include supporting the adoption of AI applications for production models, promoting foundational and applied scientific research, and creating favorable conditions through talent training and the efficiency of the Public Administration.
+  article_refs:
+    - Introduction
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Introduction
+  adversarial: false
+
+- id: ts3_short_02
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    What is the Foundation for Artificial Intelligence described in the document?
+  answer: >
+    It is the entity placed under the direct control of the Presidency of the Council of Ministers which has the responsibility for the implementation, coordination, and monitoring of the individual initiatives of the national strategy.
+  ground_truth: >
+    It is the entity placed under the direct control of the Presidency of the Council of Ministers which has the responsibility for the implementation, coordination, and monitoring of the individual initiatives of the national strategy.
+  article_refs:
+    - Action A.3
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Action A.3
+  adversarial: false
+
+- id: ts3_short_03
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    What specific risk is associated with "non-action" in the field of AI for Italy?
+  answer: >
+    A timid approach risks resulting in a waste of resources and a further loss of competitiveness, leading Italy to limit itself to importing existing solutions developed elsewhere.
+  ground_truth: >
+    A timid approach risks resulting in a waste of resources and a further loss of competitiveness, leading Italy to limit itself to importing existing solutions developed elsewhere.
+  article_refs:
+    - Risks of the strategy
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Risks of the strategy
+  adversarial: false
+
+- id: ts3_short_04
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    What is the register of datasets and models foreseen by Action A.1?
+  answer: >
+    It is a program aimed at defining a national register of ethically reliable and reusable datasets and models to accelerate the development of digital solutions for Italian companies and the Public Administration.
+  ground_truth: >
+    It is a program aimed at defining a national register of ethically reliable and reusable datasets and models to accelerate the development of digital solutions for Italian companies and the Public Administration.
+  article_refs:
+    - Action A.1
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Action A.1
+  adversarial: false
+
+- id: ts3_short_05
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    What role does the AI Italian supervisory agency play?
+  answer: >
+    It will have supervisory and notification roles regarding AI systems, also offering support for the understanding and implementation of European legislation (AI Act) to the benefit of the national production system.
+  ground_truth: >
+    It will have supervisory and notification roles regarding AI systems, also offering support for the understanding and implementation of European legislation (AI Act) to the benefit of the national production system.
+  article_refs:
+    - Regulatory Bodies
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Regulatory Bodies
+  adversarial: false
+
+- id: ts3_medium_01
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    How does the strategy intend to address the risk of the digital divide in Italy?
+  answer: >
+    The strategy plans to stem the risk of increasing territorial divides and unevenness by promoting transparent and accessible system initiatives at the national level, investing in human capital and in targeted upskilling and reskilling paths.
+  ground_truth: >
+    The strategy plans to stem the risk of increasing territorial divides and unevenness by promoting transparent and accessible system initiatives at the national level, investing in human capital and in targeted upskilling and reskilling paths.
+  article_refs:
+    - Risks of the strategy
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Risks of the strategy
+  adversarial: false
+
+- id: ts3_medium_02
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    How should the PA approach the procurement of Artificial Intelligence systems?
+  answer: >
+    The PA must rely on specific guidelines that help it navigate the acquisition of AI services; these guidelines will guarantee not only functional compliance but also adequate levels of security, adherence to European standards, and technological neutrality, avoiding the forced use of proprietary solutions.
+  ground_truth: >
+    The PA must rely on specific guidelines that help it navigate the acquisition of AI services; these guidelines will guarantee not only functional compliance but also adequate levels of security, adherence to European standards, and technological neutrality, avoiding the forced use of proprietary solutions.
+  article_refs:
+    - Action PA.2
+    - Action PA.3
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Strategy for the PA
+  adversarial: false
+
+- id: ts3_long_01
+  test_set: 3
+  answer_type: long
+  difficulty: hard
+  question: >
+    Analyze how the Italian strategy for AI intends to enhance the national network infrastructure and what are the motivations behind this choice.
+  answer: >
+    The growing use of AI-based solutions will cause a significant increase in data traffic, bringing the risk of congestion of current digital infrastructures. To respond to this challenge, the strategy promotes the development of smart networks capable of dynamically adapting to demand in real time. Furthermore, it encourages public-private collaboration for infrastructural investments and supports the standardization of interoperable solutions and edge computing technologies, useful for reducing the load and limiting the impact on the network.
+  ground_truth: >
+    The growing use of AI-based solutions will cause a significant increase in data traffic, bringing the risk of congestion of current digital infrastructures. To respond to this challenge, the strategy promotes the development of smart networks capable of dynamically adapting to demand in real time. Furthermore, it encourages public-private collaboration for infrastructural investments and supports the standardization of interoperable solutions and edge computing technologies, useful for reducing the load and limiting the impact on the network.
+  article_refs:
+    - Action A.2
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Action A.2
+  adversarial: false
+
+- id: ts3_long_02
+  test_set: 3
+  answer_type: long
+  difficulty: hard
+  question: >
+    What are the actions planned by the strategy to support and facilitate the development of SMEs and the creation of innovative start-ups in the Artificial Intelligence sector?
+  answer: >
+    The strategy provides for the establishment of AI "facilitators" operating locally that offer innovation services to businesses, and the use of dedicated financial resources (ordinary finance, venture capital, vouchers) to support specific AI adoption projects in SMEs. As for start-ups, the plan aims to stimulate the creation of spin-offs and AI-Enterprise laboratories within universities to connect researchers and the industrial world. The overall objective is to build critical mass, networking institutions and private actors in order to attract investors more effectively.
+  ground_truth: >
+    The strategy provides for the establishment of AI "facilitators" operating locally that offer innovation services to businesses, and the use of dedicated financial resources (ordinary finance, venture capital, vouchers) to support specific AI adoption projects in SMEs. As for start-ups, the plan aims to stimulate the creation of spin-offs and AI-Enterprise laboratories within universities to connect researchers and the industrial world. The overall objective is to build critical mass, networking institutions and private actors in order to attract investors more effectively.
+  article_refs:
+    - Action I.1
+    - Action I.2
+    - Action I.4
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Strategy for Businesses
+  adversarial: false
+
+- id: ts3_short_06
+  test_set: 3
+  answer_type: short
+  difficulty: easy
+  question: >
+    According to the strategy's architecture scheme, what are the four vertical macro-areas subject to coordination and monitoring?
+  answer: >
+    The four macro-areas are: Strategy for Research, Strategy for the Public Administration, Strategy for Businesses, and Strategy for Training.
+  ground_truth: >
+    The four macro-areas are: Strategy for Research, Strategy for the Public Administration, Strategy for Businesses, and Strategy for Training.
+  article_refs:
+    - Strategy architecture
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Strategy architecture
+  adversarial: false
+
+- id: ts3_medium_03
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    How are the enabling strategic actions relating to infrastructures classified and named within the "Map of strategic actions"?
+  answer: >
+    There are two infrastructural enabling actions: A.1, named "National knowledge heritage: Datasets and models", and A.2, named "Network infrastructures for Artificial Intelligence".
+  ground_truth: >
+    There are two infrastructural enabling actions: A.1, named "National knowledge heritage: Datasets and models", and A.2, named "Network infrastructures for Artificial Intelligence".
+  article_refs:
+    - Map of strategic actions
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Map of strategic actions
+  adversarial: false
+
+- id: ts3_medium_04
+  test_set: 3
+  answer_type: medium
+  difficulty: medium
+  question: >
+    In the "Map of strategic actions", how many and which specific actions are foreseen for the "Training" macro-area?
+  answer: >
+    Seven actions are planned (from F.1 to F.7): pathways for approaching AI at school, mobility, widespread teaching in degree courses, strengthening of the national doctorate, upskilling and reskilling programs, education on the use of tools, and ITS courses focused on AI.
+  ground_truth: >
+    Seven actions are planned (from F.1 to F.7): pathways for approaching AI at school, mobility, widespread teaching in degree courses, strengthening of the national doctorate, upskilling and reskilling programs, education on the use of tools, and ITS courses focused on AI.
+  article_refs:
+    - Map of strategic actions
+  contexts:
+    - Italian Strategy for Artificial Intelligence 2024-2026 – Map of strategic actions
+  adversarial: false
