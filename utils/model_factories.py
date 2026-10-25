@@ -32,7 +32,8 @@ if "GOOGLE_API_KEY" in os.environ:
     model_name = "gemini-3.1-flash-lite-preview"
     _ragas_global_semaphore = asyncio.Semaphore(3)
 elif "UNIMI_API_KEY" in os.environ:
-    model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
+    model_name = "qwen36-35b-a3b"
+    #model_name = "Qwen/Qwen3.6-35B-A3B-FP8"
     #model_name = "Qwen/Qwen3-8B"
     _ragas_global_semaphore = asyncio.Semaphore(5)
     timeout = 5 * 60
