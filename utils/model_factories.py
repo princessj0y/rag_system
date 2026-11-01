@@ -114,6 +114,7 @@ def boundedHttpxAsyncClient(delegate=None):
 
     return httpx.AsyncClient(
         transport=transport,
+        limits=httpx.Limits(max_connections=5, max_keepalive_connections=5),
         timeout=timeout,
     )
 
