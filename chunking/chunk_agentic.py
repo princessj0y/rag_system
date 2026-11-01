@@ -1,10 +1,43 @@
 import pandas # fixes pydantic segfault
 import nltk
+import json
+from pydantic import BaseModel, Field, AliasChoices, AliasPath
+from langchain_core.prompts import ChatPromptTemplate
+
 from utils.my_log import logger
 from utils.documents import make_chunking_document_aware
 
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
+
+class ChunkGroupings(BaseModel):
+    chunks: list[list[int]] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices(*[
+            alias 
+            for k in [ "chunks", "groups", "sentence_groups", "id_chunks", "chunk_list" ]
+            # Add nested keys if the model wraps everything in {"properties": {...}}
+            for alias in (k, AliasPath("properties", k))
+        ]),
+        description="A list of lists. Each inner list contains the integer IDs of sentences that form a single logical chunk."
+    )
+
+raw_schema_str = json.dumps(ChunkGroupings.model_json_schema(), indent=2)
+chunking_prompt = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "You are an expert legal document structuring agent.\n"
+        "Your task is to group the provided numbered sentences into logical, self-contained chunks.\n"
+        "Each chunk should cover exactly one legal concept, recital, or article.\n\n"
+        "CRITICAL INSTRUCTION: You MUST return your response as a valid JSON object. "
+        "Your JSON response must strictly match this exact JSON schema:\n{schema_json}\n\n"
+        "Do not skip any IDs. Every sentence must belong to a chunk."
+    ),
+    (
+        "human",
+        "TEXT TO ANALYZE:\n{numbered_text}"
+    )
+]).partial(schema_json=raw_schema_str)
 
 def _agentic_chunk_block(llm, text_block, is_eng):
     """
@@ -28,8 +61,11 @@ def _agentic_chunk_block(llm, text_block, is_eng):
     these agentic chunks back to their original Unstructured Document metadata.
     """
 
-    import json
     from nltk.tokenize import sent_tokenize
+
+    from pydantic import ValidationError
+    from langchain_core.exceptions import OutputParserException
+    from langchain_core.messages import AIMessage, HumanMessage
     
     # Pre-split the block into sentences safely
     lang = "english" if is_eng else "italian"
@@ -40,62 +76,65 @@ def _agentic_chunk_block(llm, text_block, is_eng):
 
     # Number the sentences for the LLM
     numbered_text = "\n".join([f"[{i}] {sent}" for i, sent in enumerate(sentences)])
+    messages = chunking_prompt.invoke({"numbered_text": numbered_text}).to_messages()
     
-    prompt = f"""
-    You are an expert legal document structuring agent.
-    Your task is to group the following numbered sentences into logical, self-contained chunks.
-    Each chunk should cover exactly one legal concept, recital, or article.
-    
-    TEXT TO ANALYZE:
-    {numbered_text}
-    
-    OUTPUT FORMAT:
-    You must respond ONLY with a valid JSON object containing lists of sentence IDs.
-    Do not skip any IDs. Every sentence must belong to a chunk.
-    Do not add markdown formatting, do not say "Here is the JSON".
+    structured_llm = llm.with_structured_output(ChunkGroupings)
+    id_chunks = []
 
-    Strictly use this format:
-    {{
-        "chunks": [
-            [0, 1, 2],
-            [3, 4]
-        ]
-    }}
-    """
-    
-    try:
-        response = llm.invoke(prompt).text
-        # Parse the JSON string back into a Python dictionary
-        data = json.loads(response)
-        id_chunks = data.get("chunks", [])
-
-        # Reconstruct the original text using the LLM's ID groupings
-        final_text_chunks = []
-        
-        # Keep track of used IDs to ensure we don't miss anything if the LLM hallucinates
-        used_ids = set()
-        
-        for id_list in id_chunks:
-            # Rebuild the chunk perfectly from the original sentences
-            chunk_sentences = []
-            for idx in id_list:
-                if 0 <= idx < len(sentences) and idx not in used_ids:
-                    chunk_sentences.append(sentences[idx])
-                    used_ids.add(idx)
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        is_last_attempt = attempt == max_attempts - 1
+        try:
+            response: ChunkGroupings = structured_llm.invoke(messages)
+            id_chunks = response.chunks
+            break
             
-            if chunk_sentences:
-                final_text_chunks.append(" ".join(chunk_sentences))
+        except (ValidationError, OutputParserException) as e:
+            if is_last_attempt:
+                logger.error(f"Agentic chunking schema validation failed after {max_attempts} attempts: {e}")
+                break
                 
-        # Failsafe: If the LLM forgot some sentences, make them a new chunk.
-        missed_ids = [i for i in range(len(sentences)) if i not in used_ids]
-        if missed_ids:
-            missed_sentences = [sentences[i] for i in missed_ids]
-            final_text_chunks.append(" ".join(missed_sentences))
+            # Extract raw output and feed the error back to the LLM
+            raw_content = getattr(e, "llm_output", None) or getattr(e, "observation", None)
+            messages.append(AIMessage(content=str(raw_content) if raw_content else "[Invalid JSON / Schema Output]"))
+            messages.append(HumanMessage(
+                content=f"Your previous response failed JSON/schema validation with this error:\n{e}\n"
+                        f"Please correct your response to strictly match the requested JSON schema."
+            ))
+            continue
             
-        return final_text_chunks
-    except json.JSONDecodeError:
-        logger.exception("LLM Agent failed. Falling back to original block.")
+        except Exception as e:
+            # For network drops, timeouts, or Ollama server crashes, log and bail safely
+            logger.exception("General AI Error during metadata generation: %s", e)
+            break
+
+    if not id_chunks:
+        logger.error("LLM Agent failed. Falling back to original block.")
         return [text_block]
+
+    # Reconstruct the original text using the LLM's ID groupings
+    final_text_chunks = []
+    # Keep track of used IDs to ensure we don't miss anything if the LLM hallucinates
+    used_ids = set()
+    
+    for id_list in id_chunks:
+        # Rebuild the chunk perfectly from the original sentences
+        chunk_sentences = []
+        for idx in id_list:
+            if 0 <= idx < len(sentences) and idx not in used_ids:
+                chunk_sentences.append(sentences[idx])
+                used_ids.add(idx)
+        
+        if chunk_sentences:
+            final_text_chunks.append(" ".join(chunk_sentences))
+            
+    # Failsafe: If the LLM forgot some sentences or crashed, make them a new chunk.
+    missed_ids = [i for i in range(len(sentences)) if i not in used_ids]
+    if missed_ids:
+        missed_sentences = [sentences[i] for i in missed_ids]
+        final_text_chunks.append(" ".join(missed_sentences))
+        
+    return final_text_chunks
 
 def _run_agentic_chunking(raw_text, model_name=None, is_eng = False):
     from tqdm import tqdm
@@ -112,8 +151,6 @@ def _run_agentic_chunking(raw_text, model_name=None, is_eng = False):
     system = "You output strictly valid JSON."
     llm = create_model_by_name(
         model=model_name,
-        format="json",
-        system=system,
         # temperature=0.2, num_predict=50
     )
     
