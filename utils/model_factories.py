@@ -114,7 +114,6 @@ def boundedHttpxAsyncClient(delegate=None):
 
     return httpx.AsyncClient(
         transport=transport,
-        limits=httpx.Limits(max_connections=5, max_keepalive_connections=5),
         timeout=timeout,
     )
 
@@ -234,6 +233,10 @@ def create_ragas_model(model, provider="openai", **kwargs):
     return llm_factory(model=model, provider=provider, **kwargs)
 
 def create_default_ragas_model_iterator():
+    transport_connection_pool = default_async_httpx_transport(delegate=httpx.AsyncHTTPTransport(
+        limits=httpx.Limits(max_connections=5, max_keepalive_connections=5),
+    ))
+
     if "GOOGLE_API_KEY" in os.environ:
         logger.info("Running with Gemini as LLM...")
         # TODO: limit gemini concurrency with the _ragas_global_semaphore
@@ -257,7 +260,7 @@ def create_default_ragas_model_iterator():
                 client=AsyncOpenAI(
                     api_key=os.environ.get("UNIMI_API_KEY"), 
                     base_url="https://open-webui.ricerca.sesar.di.unimi.it/openai",
-                    http_client=boundedHttpxAsyncClient()
+                    http_client=boundedHttpxAsyncClient(delegate=transport_connection_pool)
                 ),
                 max_tokens=8192,
                 extra_body={
@@ -282,7 +285,8 @@ def create_default_ragas_model_iterator():
                     http_client=boundedHttpxAsyncClient(
                         delegate=AsyncKeyRotationHttpxTransport(
                             # Inline shuffle creates a fresh randomized list on every iteration
-                            shuffled_keys=random.sample(list(ollama_api_keys), len(ollama_api_keys))
+                            shuffled_keys=random.sample(list(ollama_api_keys), len(ollama_api_keys)),
+                            delegate=transport_connection_pool,
                         )
                     )
                 ),
