@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from datetime import datetime
 import httpx
 import traceback
@@ -28,6 +29,42 @@ def default_sync_httpx_transport(delegate: httpx.BaseTransport = None) -> httpx.
     return base
 
 ###############################################################################
+#                              TIMINGS                                        #
+###############################################################################
+
+class _Timings:
+    def __init__(self):
+        self.t1_before_req_read: float = 0.0
+        self.t2_before_network: float = 0.0
+        self.t3_start_stream: float = 0.0
+        self.t4_start_close: float = 0.0
+        self.t5_log_write: float = 0.0
+
+    def format_log_section(self) -> str:
+        lines = ["========== [TIMINGS] =========="]
+        
+        def fmt_ts(ts):
+            return datetime.fromtimestamp(ts).strftime('%H:%M:%S.%f')[:-3] if ts else "(Not Reached)"
+            
+        lines.append(f"1. Before Request Read : {fmt_ts(self.t1_before_req_read)}")
+        lines.append(f"2. Before Network Req  : {fmt_ts(self.t2_before_network)}")
+        lines.append(f"3. Start of Stream     : {fmt_ts(self.t3_start_stream)}")
+        lines.append(f"4. Start of Close      : {fmt_ts(self.t4_start_close)}")
+        lines.append(f"5. Log File Written    : {fmt_ts(self.t5_log_write)}")
+        
+        lines.append("\n--- Durations ---")
+        
+        def fmt_diff(t_end, t_start):
+            return f"{(t_end - t_start):.3f}s" if t_end and t_start else "N/A"
+            
+        lines.append(f"Local Body Read        : {fmt_diff(self.t2_before_network, self.t1_before_req_read)}")
+        lines.append(f"Time to First Byte     : {fmt_diff(self.t3_start_stream, self.t2_before_network)}")
+        lines.append(f"Stream Consumption     : {fmt_diff(self.t4_start_close, self.t3_start_stream)}")
+        lines.append(f"Total Network Time     : {fmt_diff(self.t4_start_close, self.t2_before_network)}")
+        
+        return "\n".join(lines) + "\n\n"
+    
+###############################################################################
 #                              LOGGING                                        #
 ###############################################################################
 
@@ -38,10 +75,15 @@ def _write_log_file(
         response: httpx.Response = None, 
         res_body: bytes = b"", 
         exception: Exception = None,
+        timings: _Timings = None,
 ):
     """Writes the formatted request and response pair to a new timestamped file."""
     if not HTTP_LOG_DIR: 
         return
+
+    # Record the final file write timing
+    if timings:
+        timings.t5_log_write = time.time()
 
     # Clearly mark errors (exceptions or non-2xx status codes)
     is_error = exception is not None or (response and not (200 <= response.status_code < 300))
@@ -64,6 +106,9 @@ def _write_log_file(
             f.write(json.dumps(current_mdc, indent=2, ensure_ascii=False) + "\n\n")
         else:
             f.write("(Empty)\n\n")
+
+        if timings:
+            f.write(timings.format_log_section())
         
         f.write(f"========== [HTTP REQUEST] ==========\n")
         f.write(f"URL: {request.method} {request.url}\n")
@@ -156,15 +201,19 @@ def _format_headers(headers: httpx.Headers) -> str:
 ###############################################################################
 
 class FileLoggingAsyncByteStream(httpx.AsyncByteStream):
-    def __init__(self, stream: httpx.AsyncByteStream, request: httpx.Request, req_body: bytes, response: httpx.Response):
+    def __init__(self, stream: httpx.AsyncByteStream, request: httpx.Request, req_body: bytes, response: httpx.Response, timings: _Timings):
         self.stream = stream
         self.request = request
         self.req_body = req_body
         self.response = response
+        self.timings = timings
         self.chunks = []
         self._logged = False
 
     async def __aiter__(self):
+        if not self.timings.t3_start_stream:
+            self.timings.t3_start_stream = time.time()
+
         try:
             async for chunk in self.stream:
                 self.chunks.append(chunk)
@@ -173,23 +222,26 @@ class FileLoggingAsyncByteStream(httpx.AsyncByteStream):
             # Catch exceptions that occur DURING streaming (e.g., ReadTimeout)
             if not self._logged:
                 res_body = b"".join(self.chunks)
-                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e, timings=self.timings)
                 self._logged = True
             raise e
 
     async def aclose(self):
+        if not self.timings.t4_start_close:
+            self.timings.t4_start_close = time.time()
+
         try:
             await self.stream.aclose()
         except Exception as e:
             if not self._logged:
                 res_body = b"".join(self.chunks)
-                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e, timings=self.timings)
                 self._logged = True
             raise e
 
         if not self._logged:
             res_body = b"".join(self.chunks)
-            _write_log_file(self.request, self.req_body, self.response, res_body)
+            _write_log_file(self.request, self.req_body, self.response, res_body, timings=self.timings)
             self._logged = True
 
 
@@ -199,23 +251,27 @@ class FileLoggingAsyncTransport(httpx.AsyncBaseTransport):
         self.delegate = delegate
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        timings = _Timings()
+
         try:
+            timings.t1_before_req_read = time.time()
             await request.aread()
             req_body = request.content
         except Exception as e:
             # If reading the outgoing body fails, log what we have (URL/Headers)
-            _write_log_file(request, b"<FAILED TO READ REQUEST BODY>", exception=e)
+            _write_log_file(request, b"<FAILED TO READ REQUEST BODY>", exception=e, timings=timings)
             raise e
         
         try:
+            timings.t2_before_network = time.time()
             response = await self.delegate.handle_async_request(request)
         except Exception as e:
             # Catch exceptions that occur BEFORE the response is received (e.g., ConnectionError)
-            _write_log_file(request, req_body, exception=e)
+            _write_log_file(request, req_body, exception=e, timings=timings)
             raise e
         
         response.stream = FileLoggingAsyncByteStream(
-            response.stream, request, req_body, response
+            response.stream, request, req_body, response, timings
         )
         return response
 
@@ -227,15 +283,19 @@ class FileLoggingAsyncTransport(httpx.AsyncBaseTransport):
 ###############################################################################
 
 class FileLoggingSyncByteStream(httpx.SyncByteStream):
-    def __init__(self, stream: httpx.SyncByteStream, request: httpx.Request, req_body: bytes, response: httpx.Response):
+    def __init__(self, stream: httpx.SyncByteStream, request: httpx.Request, req_body: bytes, response: httpx.Response, timings: _Timings):
         self.stream = stream
         self.request = request
         self.req_body = req_body
         self.response = response
+        self.timings = timings
         self.chunks = []
         self._logged = False
 
     def __iter__(self):
+        if not self.timings.t3_start_stream:
+            self.timings.t3_start_stream = time.time()
+
         try:
             for chunk in self.stream:
                 self.chunks.append(chunk)
@@ -243,23 +303,26 @@ class FileLoggingSyncByteStream(httpx.SyncByteStream):
         except Exception as e:
             if not self._logged:
                 res_body = b"".join(self.chunks)
-                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e, timings=self.timings)
                 self._logged = True
             raise e
 
     def close(self):
+        if not self.timings.t4_start_close:
+            self.timings.t4_start_close = time.time()
+
         try:
             self.stream.close()
         except Exception as e:
             if not self._logged:
                 res_body = b"".join(self.chunks)
-                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e, timings=self.timings)
                 self._logged = True
             raise e
 
         if not self._logged:
             res_body = b"".join(self.chunks)
-            _write_log_file(self.request, self.req_body, self.response, res_body)
+            _write_log_file(self.request, self.req_body, self.response, res_body, timings=self.timings)
             self._logged = True
 
 
@@ -269,22 +332,26 @@ class FileLoggingSyncTransport(httpx.BaseTransport):
         self.delegate = delegate
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
+        timings = _Timings()
+
         try:
+            timings.t1_before_req_read = time.time()
             request.read()
             req_body = request.content
         except Exception as e:
             # If reading the outgoing body fails, log what we have (URL/Headers)
-            _write_log_file(request, b"<FAILED TO READ REQUEST BODY>", exception=e)
+            _write_log_file(request, b"<FAILED TO READ REQUEST BODY>", exception=e, timings=timings)
             raise e
 
         try:
+            timings.t2_before_network = time.time()
             response = self.delegate.handle_request(request)
         except Exception as e:
-            _write_log_file(request, req_body, exception=e)
+            _write_log_file(request, req_body, exception=e, timings=timings)
             raise e
         
         response.stream = FileLoggingSyncByteStream(
-            response.stream, request, req_body, response
+            response.stream, request, req_body, response, timings
         )
         return response
 
