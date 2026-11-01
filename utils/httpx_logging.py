@@ -2,7 +2,8 @@ import os
 import json
 from datetime import datetime
 import httpx
-import asyncio
+import traceback
+from utils.my_log import mdc_context
 
 is_http_logging_enabled = os.getenv("DEBUG_HTTP_LOGS", "false").lower() == "true"
 HTTP_LOG_DIR = None
@@ -31,11 +32,20 @@ def default_sync_httpx_transport(delegate: httpx.BaseTransport = None) -> httpx.
 ###############################################################################
 
 
-def _write_log_file(request: httpx.Request, req_body: bytes, response: httpx.Response, res_body: bytes):
+def _write_log_file(
+        request: httpx.Request, 
+        req_body: bytes, 
+        response: httpx.Response = None, 
+        res_body: bytes = b"", 
+        exception: Exception = None,
+):
     """Writes the formatted request and response pair to a new timestamped file."""
     if not HTTP_LOG_DIR: 
         return
-        
+
+    # Clearly mark errors (exceptions or non-2xx status codes)
+    is_error = exception is not None or (response and not (200 <= response.status_code < 300))
+    
     # Microsecond precision ensures parallel requests get unique files
     file_ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     safe_url = request.url.host + request.url.path.replace('/', '_')
@@ -45,21 +55,38 @@ def _write_log_file(request: httpx.Request, req_body: bytes, response: httpx.Res
     
     # Decompress before formatting
     req_body_clean = _decompress_for_logs(req_body, request.headers)
-    res_body_clean = _decompress_for_logs(res_body, response.headers)
-    
     req_text = _format_body(req_body_clean)
-    res_text = _format_body(res_body_clean)
     
     with open(filepath, "w", encoding="utf-8") as f:
+        f.write("========== [MDC CONTEXT] ==========\n")
+        current_mdc = mdc_context.get()
+        if current_mdc:
+            f.write(json.dumps(current_mdc, indent=2, ensure_ascii=False) + "\n\n")
+        else:
+            f.write("(Empty)\n\n")
+        
         f.write(f"========== [HTTP REQUEST] ==========\n")
         f.write(f"URL: {request.method} {request.url}\n")
         f.write(f"Headers:\n{_format_headers(request.headers)}\n\n")
         f.write(f"Body:\n{req_text}\n\n")
+
+        if exception:
+            f.write("========== [EXCEPTION / ERROR] ==========\n")
+            f.write(f"Type: {type(exception).__name__}\n")
+            f.write("Stacktrace:\n")
+            f.write("".join(traceback.format_exception(type(exception), exception, exception.__traceback__)))
         
-        f.write(f"========== [HTTP RESPONSE] ==========\n")
-        f.write(f"Status: {response.status_code}\n")
-        f.write(f"Headers:\n{_format_headers(response.headers)}\n\n")
-        f.write(f"Body:\n{res_text}\n")
+        if response:
+            # If the exception happened mid-stream, we might have partial response headers/body
+            f.write("\n\n--- PARTIAL RESPONSE BEFORE EXCEPTION ---\n" if exception
+                    else "========== [HTTP RESPONSE] ==========\n")
+            status_marker = (" [ERROR: FAILED MID-STREAM]" if exception 
+                             else " [ERROR: NON-2xx]" if is_error 
+                             else "")
+            f.write(f"Status: {response.status_code}{status_marker}\n")
+            f.write(f"Headers:\n{_format_headers(response.headers)}\n\n")
+            res_body_clean = _decompress_for_logs(res_body, response.headers)
+            f.write(f"Body:\n{_format_body(res_body_clean)}\n")
 
 def _decompress_for_logs(content_bytes: bytes, headers: httpx.Headers) -> bytes:
     """Decompresses network bytes for logging. Libraries are guaranteed to be present 
@@ -138,12 +165,28 @@ class FileLoggingAsyncByteStream(httpx.AsyncByteStream):
         self._logged = False
 
     async def __aiter__(self):
-        async for chunk in self.stream:
-            self.chunks.append(chunk)
-            yield chunk
+        try:
+            async for chunk in self.stream:
+                self.chunks.append(chunk)
+                yield chunk
+        except Exception as e:
+            # Catch exceptions that occur DURING streaming (e.g., ReadTimeout)
+            if not self._logged:
+                res_body = b"".join(self.chunks)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                self._logged = True
+            raise e
 
     async def aclose(self):
-        await self.stream.aclose()
+        try:
+            await self.stream.aclose()
+        except Exception as e:
+            if not self._logged:
+                res_body = b"".join(self.chunks)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                self._logged = True
+            raise e
+
         if not self._logged:
             res_body = b"".join(self.chunks)
             _write_log_file(self.request, self.req_body, self.response, res_body)
@@ -156,10 +199,20 @@ class FileLoggingAsyncTransport(httpx.AsyncBaseTransport):
         self.delegate = delegate
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        await request.aread()
-        req_body = request.content
+        try:
+            await request.aread()
+            req_body = request.content
+        except Exception as e:
+            # If reading the outgoing body fails, log what we have (URL/Headers)
+            _write_log_file(request, b"<FAILED TO READ REQUEST BODY>", exception=e)
+            raise e
         
-        response = await self.delegate.handle_async_request(request)
+        try:
+            response = await self.delegate.handle_async_request(request)
+        except Exception as e:
+            # Catch exceptions that occur BEFORE the response is received (e.g., ConnectionError)
+            _write_log_file(request, req_body, exception=e)
+            raise e
         
         response.stream = FileLoggingAsyncByteStream(
             response.stream, request, req_body, response
@@ -183,12 +236,27 @@ class FileLoggingSyncByteStream(httpx.SyncByteStream):
         self._logged = False
 
     def __iter__(self):
-        for chunk in self.stream:
-            self.chunks.append(chunk)
-            yield chunk
+        try:
+            for chunk in self.stream:
+                self.chunks.append(chunk)
+                yield chunk
+        except Exception as e:
+            if not self._logged:
+                res_body = b"".join(self.chunks)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                self._logged = True
+            raise e
 
     def close(self):
-        self.stream.close()
+        try:
+            self.stream.close()
+        except Exception as e:
+            if not self._logged:
+                res_body = b"".join(self.chunks)
+                _write_log_file(self.request, self.req_body, self.response, res_body, exception=e)
+                self._logged = True
+            raise e
+
         if not self._logged:
             res_body = b"".join(self.chunks)
             _write_log_file(self.request, self.req_body, self.response, res_body)
@@ -201,10 +269,19 @@ class FileLoggingSyncTransport(httpx.BaseTransport):
         self.delegate = delegate
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        request.read()
-        req_body = request.content
-        
-        response = self.delegate.handle_request(request)
+        try:
+            request.read()
+            req_body = request.content
+        except Exception as e:
+            # If reading the outgoing body fails, log what we have (URL/Headers)
+            _write_log_file(request, b"<FAILED TO READ REQUEST BODY>", exception=e)
+            raise e
+
+        try:
+            response = self.delegate.handle_request(request)
+        except Exception as e:
+            _write_log_file(request, req_body, exception=e)
+            raise e
         
         response.stream = FileLoggingSyncByteStream(
             response.stream, request, req_body, response
