@@ -1,5 +1,6 @@
 import httpx
 import asyncio
+from tqdm.asyncio import tqdm
 from .httpx_logging import default_sync_httpx_transport, default_async_httpx_transport
 
 class SyncKeyRotationHttpxTransport(httpx.BaseTransport):
@@ -80,3 +81,41 @@ class BoundedAsyncHttpxTransport(httpx.AsyncBaseTransport):
     async def aclose(self) -> None:
         """Ensure the underlying delegate transport is gracefully closed."""
         await self.delegate.aclose()
+
+class TqdmAsyncTransport(httpx.AsyncBaseTransport):
+    def __init__(self, pbar: tqdm, delegate: httpx.AsyncBaseTransport):
+        super().__init__()
+        self.pbar = pbar
+        self.delegate = delegate
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        # +1 to total when request starts
+        self.pbar.total = (self.pbar.total or 0) + 1
+        self.pbar.refresh()
+        try:
+            return await self.delegate.handle_async_request(request)
+        finally:
+            # +1 to done when request finishes
+            self.pbar.update(1)
+
+    async def aclose(self) -> None:
+        await self.delegate.aclose()
+
+class TqdmSyncTransport(httpx.BaseTransport):
+    def __init__(self, pbar: tqdm, delegate: httpx.BaseTransport):
+        super().__init__()
+        self.pbar = pbar
+        self.delegate = delegate
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        # +1 to total when request starts
+        self.pbar.total = (self.pbar.total or 0) + 1
+        self.pbar.refresh()
+        try:
+            return self.delegate.handle_request(request)
+        finally:
+            # +1 to done when request finishes
+            self.pbar.update(1)
+
+    def close(self) -> None:
+        self.delegate.close()

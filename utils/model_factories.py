@@ -5,8 +5,9 @@ import random
 import asyncio
 
 import httpx
+from contextlib import asynccontextmanager
 from .httpx_logging import default_sync_httpx_transport, default_async_httpx_transport
-from .httpx_transports import SyncKeyRotationHttpxTransport, AsyncKeyRotationHttpxTransport, BoundedAsyncHttpxTransport
+from .httpx_transports import SyncKeyRotationHttpxTransport, AsyncKeyRotationHttpxTransport, BoundedAsyncHttpxTransport, TqdmAsyncTransport
 
 is_streaming_stdout_enabled = os.getenv("DEBUG_PRINT_STDOUT", "false").lower() == "true"
 os.environ["RAGAS_DO_NOT_TRACK"] = 'true'
@@ -88,16 +89,50 @@ else:
     default_embeddings = BatchedEmbeddings(OllamaEmbeddings(model=embeddings_model_name))
 
 ########################################################################
+#                        Global HTTP TQDM                              #
+########################################################################
+
+_global_http_pbar = None
+
+@asynccontextmanager
+async def global_http_progress_tracker(skip_slots=0, **kwargs):
+    """Context manager to intercept and track HTTPX requests via tqdm."""
+    from tqdm.asyncio import tqdm
+
+    global _global_http_pbar
+
+    if skip_slots > 0 and "position" not in kwargs:
+        instances = getattr(tqdm, '_instances', None)
+        active_bars = len(instances) if instances else 0
+        kwargs["position"] = active_bars + skip_slots
+
+    kwargs.setdefault("total", 0)
+    kwargs.setdefault("desc", "LLM API Calls")
+    kwargs.setdefault("unit", "req")
+    
+    with tqdm(**kwargs) as pbar:
+        _global_http_pbar = pbar
+        try:
+            yield pbar
+        finally:
+            _global_http_pbar = None
+
+########################################################################
 #                           Factories                                  #
 ########################################################################
 
 def boundedHttpxAsyncClient(delegate=None):
+    transport = BoundedAsyncHttpxTransport(
+        delegate=delegate, 
+        semaphore=_ragas_global_semaphore
+    )
+
+    if _global_http_pbar is not None:
+        transport = TqdmAsyncTransport(pbar=_global_http_pbar, delegate=transport)
+
     return httpx.AsyncClient(
-        transport=BoundedAsyncHttpxTransport(
-            delegate=delegate, 
-            semaphore=_ragas_global_semaphore
-        ),
-        timeout=timeout
+        transport=transport,
+        timeout=timeout,
     )
 
 def create_ollama_model(model, system=None, **kwargs):
@@ -220,69 +255,79 @@ def create_default_ragas_model_iterator():
         logger.info("Running with Gemini as LLM...")
         # TODO: limit gemini concurrency with the _ragas_global_semaphore
         from google import genai
-        client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
-        return itertools.cycle([
-            create_ragas_model(model_name, provider="google", client=client)
-        ])
+        return (
+            create_ragas_model(
+                model_name, 
+                provider="google", 
+                client=genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+            )
+            for _ in itertools.count()
+        )
 
     elif "UNIMI_API_KEY" in os.environ:
         logger.info("Running with Unimi as LLM...")
         from openai import AsyncOpenAI
-        client = AsyncOpenAI(
-            api_key=os.environ.get("UNIMI_API_KEY"), 
-            base_url="https://open-webui.ricerca.sesar.di.unimi.it/openai",
-            http_client=boundedHttpxAsyncClient()
+        return (
+            create_ragas_model(
+                model_name, 
+                provider="openai", 
+                client=AsyncOpenAI(
+                    api_key=os.environ.get("UNIMI_API_KEY"), 
+                    base_url="https://open-webui.ricerca.sesar.di.unimi.it/openai",
+                    http_client=boundedHttpxAsyncClient()
+                ),
+                max_tokens=8192,
+                extra_body={
+                    "chat_template_kwargs": {
+                        "enable_thinking": False
+                    }
+                },
+            )
+            for _ in itertools.count()
         )
-        return itertools.cycle([create_ragas_model(
-            model_name, 
-            provider="openai", 
-            client=client,
-            max_tokens=8192,
-            extra_body={
-                "chat_template_kwargs": {
-                    "enable_thinking": False
-                }
-            }
-        )])
     
     elif len(ollama_api_keys) > 0:
         logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) as LLM...")
         from openai import AsyncOpenAI
-        def model_generator():
-            while True:
-                keys = list(ollama_api_keys)
-                random.shuffle(keys)
-                client = AsyncOpenAI(
+        return (
+            create_ragas_model(
+                model_name, 
+                provider="openai", 
+                client=AsyncOpenAI(
                     api_key="ollama",
                     base_url="https://ollama.com/v1",
                     http_client=boundedHttpxAsyncClient(
-                            delegate=AsyncKeyRotationHttpxTransport(shuffled_keys=keys),
+                        delegate=AsyncKeyRotationHttpxTransport(
+                            # Inline shuffle creates a fresh randomized list on every iteration
+                            shuffled_keys=random.sample(list(ollama_api_keys), len(ollama_api_keys))
+                        )
                     )
-                )
-                yield create_ragas_model(
-                    model_name, 
-                    provider="openai", 
-                    client=client,
-                    max_tokens=4096, 
-                    # Ollama-specific context window size
-                    extra_body={
-                        "options": {
-                            "num_ctx": 8192 # Total context (input + output)
-                        }
-                    },
-                )
-        return model_generator()
+                ),
+                max_tokens=4096, 
+                # Ollama-specific context window size
+                extra_body={
+                    "options": {
+                        "num_ctx": 8192 # Total context (input + output)
+                    }
+                },
+            )
+            for _ in itertools.count()
+        )
 
     logger.info("Running with Ollama as LLM...")
     from openai import AsyncOpenAI
-    client = AsyncOpenAI(
-        api_key="ollama", 
-        base_url="http://localhost:11434/v1",
-        http_client=boundedHttpxAsyncClient(),
+    return (
+        create_ragas_model(
+            model_name, 
+            provider="openai", 
+            client=AsyncOpenAI(
+                api_key="ollama", 
+                base_url="http://localhost:11434/v1",
+                http_client=boundedHttpxAsyncClient(),
+            )
+        )
+        for _ in itertools.count()
     )
-    return itertools.cycle([
-        create_ragas_model(model_name, provider="openai", client=client) 
-    ])
 
 def create_ragas_embedding_model(model, provider="openai", **kwargs):
     from ragas.embeddings.base import embedding_factory

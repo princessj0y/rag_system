@@ -12,7 +12,7 @@ from tqdm import tqdm
 from utils.my_log import logger, async_mdc
 
 from ragas import experiment, Dataset
-from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings, create_default_embedding_model_iterator
+from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings, create_default_embedding_model_iterator, global_http_progress_tracker, set_default_embedding_model
 from ragas.metrics.collections import (
     Faithfulness,
     ContextPrecision,
@@ -281,10 +281,11 @@ async def evaluate_method(file_name, chunking_name, chunking_function, page_inde
         data=pd.DataFrame(dataset).to_dict(orient="records")
     )
     logger.info("Running experiment...")
-    risultato = await run_rag_evaluation.arun(
-        dataset=dataset_finale,
-        name=experiment_name,
-    )
+    async with global_http_progress_tracker(desc="LLM Queries", skip_slots=1):
+        risultato = await run_rag_evaluation.arun(
+            dataset=dataset_finale,
+            name=experiment_name,
+        )
 
     df = df = pd.DataFrame(risultato)
     logger.info(
