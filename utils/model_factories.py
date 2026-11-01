@@ -3,6 +3,7 @@ from .my_log import logger
 import itertools
 import random
 import asyncio
+from types import SimpleNamespace
 
 import httpx
 from contextlib import asynccontextmanager
@@ -56,37 +57,18 @@ embeddings_model_name = 'qwen3-embedding:0.6b'
 #embeddings_model_name = 'nomic-embed-text'
 #embeddings_model_name = 'mxbai-embed-large'
 
-#embeddings_model_name = 'dlicari/Italian-Legal-BERT'
-#embeddings_model_name = 'nlpaueb/bert-base-uncased-eurlex'
-#embeddings_model_name = 'all-MiniLM-L6-v2'
+#embeddings_model_name = 'huggingface/dlicari/Italian-Legal-BERT'
+#embeddings_model_name = 'huggingface/nlpaueb/bert-base-uncased-eurlex'
+#embeddings_model_name = 'huggingface/all-MiniLM-L6-v2'
 
-class BatchedEmbeddings:
-    def __init__(self, embeddings, batch_size=16):
-        self.embeddings = embeddings
-        self.batch_size = batch_size
+########################################################################
+#                        Defaults object                               #
+########################################################################
 
-    def embed_documents(self, texts):
-        if not texts:
-            return []
-        try:
-            return self.embeddings.embed_documents(texts[:self.batch_size]) + self.embed_documents(texts[self.batch_size:])
-        except Exception:
-            if len(texts) == 1:
-                raise
-            midpoint = len(texts) // 2
-            return self.embed_documents(texts[:midpoint]) + self.embed_documents(texts[midpoint:])
-
-    def embed_query(self, text):
-        return self.embeddings.embed_query(text)
-
-if (embeddings_model_name == 'all-MiniLM-L6-v2'
-    or embeddings_model_name == 'dlicari/Italian-Legal-BERT'
-    or embeddings_model_name == 'nlpaueb/bert-base-uncased-eurlex'):
-    from langchain_huggingface import HuggingFaceEmbeddings
-    default_embeddings = BatchedEmbeddings(HuggingFaceEmbeddings(model_name=embeddings_model_name))
-else:
-    from langchain_ollama import OllamaEmbeddings
-    default_embeddings = BatchedEmbeddings(OllamaEmbeddings(model=embeddings_model_name))
+model_defaults = SimpleNamespace(
+    llm=model_name,
+    embeddings=embeddings_model_name,
+)
 
 ########################################################################
 #                        Global HTTP TQDM                              #
@@ -118,7 +100,7 @@ async def global_http_progress_tracker(skip_slots=0, **kwargs):
             _global_http_pbar = None
 
 ########################################################################
-#                           Factories                                  #
+#                       LLM Factories                                  #
 ########################################################################
 
 def boundedHttpxAsyncClient(delegate=None):
@@ -329,59 +311,58 @@ def create_default_ragas_model_iterator():
         for _ in itertools.count()
     )
 
+########################################################################
+#                    Embedding Factories                               #
+########################################################################
+
+class BatchedEmbeddings:
+    def __init__(self, embeddings, batch_size=16):
+        self.embeddings = embeddings
+        self.batch_size = batch_size
+
+    def embed_documents(self, texts):
+        if not texts:
+            return []
+        try:
+            return self.embeddings.embed_documents(texts[:self.batch_size]) + self.embed_documents(texts[self.batch_size:])
+        except Exception:
+            if len(texts) == 1:
+                raise
+            midpoint = len(texts) // 2
+            return self.embed_documents(texts[:midpoint]) + self.embed_documents(texts[midpoint:])
+
+    def embed_query(self, text):
+        return self.embeddings.embed_query(text)
+
+def create_default_embeddings(**kwargs):
+    if embeddings_model_name.startswith("huggingface/"):
+        from langchain_huggingface import HuggingFaceEmbeddings
+        return BatchedEmbeddings(HuggingFaceEmbeddings(
+            model_name=embeddings_model_name[len("huggingface/"):],
+            **kwargs
+        ))
+    
+    from langchain_ollama import OllamaEmbeddings
+    return BatchedEmbeddings(OllamaEmbeddings(
+        model=embeddings_model_name,
+        **kwargs
+    ))
+
 def create_ragas_embedding_model(model, provider="openai", **kwargs):
     from ragas.embeddings.base import embedding_factory
     return embedding_factory(model=model, provider=provider, interface="modern", **kwargs)
 
-def create_default_embedding_model_iterator():
-    if 'gemini' in embeddings_model_name:
-        if "GOOGLE_API_KEY" not in os.environ:
-            raise f"no GOOGLE_API_KEY env var found, cannot use {embeddings_model_name}"
-
-        logger.info("Running with Gemini for embeddings...")
-        from google import genai
-        client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
-        return itertools.cycle([ create_ragas_embedding_model(
-            embeddings_model_name,
-            provider="google",
-            client=client
-        ) ])
-    
-    elif 'cloud' in embeddings_model_name:
-        if len(ollama_api_keys) == 0:
-            raise f"no OLLAMA_API_KEY env var found, cannot use {embeddings_model_name}"
-
-        logger.info(f"Running with Ollama Cloud ({len(ollama_api_keys)} keys found) for embeddings...")
-        from openai import AsyncOpenAI
-        def model_generator():
-            while True:
-                keys = list(ollama_api_keys)
-                random.shuffle(keys)
-                client = AsyncOpenAI(
-                    api_key="ollama", 
-                    base_url="https://ollama.com/v1",
-                    http_client=boundedHttpxAsyncClient(
-                            delegate=AsyncKeyRotationHttpxTransport(shuffled_keys=keys),
-                    )
-                )
-                yield create_ragas_embedding_model(
-                    embeddings_model_name, 
-                    provider="openai", 
-                    client=client,
-                    max_tokens=4096,
-                    extra_body={
-                        "options": {
-                            "num_ctx": 8192 # Total context (input + output)
-                        }
-                    },
-                )
-            return model_generator()
+def create_default_ragas_embeddings():
+    if embeddings_model_name.startswith("huggingface/"):
+        logger.info("Running with HuggingFace for embeddings...")
+        return create_ragas_embedding_model(
+            model=embeddings_model_name[len("huggingface/"):],
+            provider="huggingface",
+        )
 
     logger.info("Running with Ollama for embeddings...")
-    return itertools.cycle([
-        create_ragas_embedding_model(
-            model=f"ollama/{embeddings_model_name}",
-            provider="litellm", #todo: why did i choose litellm? 
-            api_base="http://localhost:11434",
-        )
-    ])
+    return create_ragas_embedding_model(
+        model=f"ollama/{embeddings_model_name}",
+        provider="litellm", #todo: why did i choose litellm? 
+        api_base="http://localhost:11434",
+    )

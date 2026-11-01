@@ -12,7 +12,7 @@ from tqdm import tqdm
 from utils.my_log import logger, async_mdc
 
 from ragas import experiment, Dataset
-from utils.model_factories import model_name, embeddings_model_name, create_default_ragas_model_iterator, create_default_model, default_embeddings, create_default_embedding_model_iterator, global_http_progress_tracker, set_default_embedding_model
+from utils.model_factories import model_defaults, create_default_ragas_model_iterator, create_default_model, create_default_ragas_embeddings, create_default_embeddings, global_http_progress_tracker
 from ragas.metrics.collections import (
     Faithfulness,
     ContextPrecision,
@@ -74,7 +74,6 @@ chunking_strategies = {
 }
 
 llm_iterator = create_default_ragas_model_iterator()
-embedding_iterator = create_default_embedding_model_iterator()
 
 def retrieve_chunking_dataset(
     experiment_name,
@@ -93,7 +92,7 @@ def retrieve_chunking_dataset(
     logger.info(f"Targeting persistent directory: {experiment_dir}")
     vectorstore = Chroma(
         collection_name="eval_collection",
-        embedding_function=default_embeddings,
+        embedding_function=create_default_embeddings(),
         persist_directory=experiment_dir
     )
 
@@ -133,7 +132,7 @@ def retrieve_chunking_dataset(
     return dataset
 
 async def evaluate_method(file_name, chunking_name, chunking_function, page_index_doc_id, timestamp, raw_text, is_eng, dataset, source_name):
-    experiment_name = f"{file_name}_{model_name}_{embeddings_model_name}_{chunking_name.lower().replace(' ', '-')}_{'EN' if is_eng else 'IT'}"
+    experiment_name = f"{file_name}_{model_defaults.llm}_{model_defaults.embeddings}_{chunking_name.lower().replace(' ', '-')}_{'EN' if is_eng else 'IT'}"
     # Replace anything that isn't alphanumeric, dash, or underscore with a dash
     experiment_name = re.sub(r'[^a-zA-Z0-9_-]', '-', experiment_name)
     # Strip leading/trailing punctuation
@@ -162,6 +161,8 @@ async def evaluate_method(file_name, chunking_name, chunking_function, page_inde
         answer = answer_llm.invoke(search_prompt).text
         dataset["response"].append(answer)
     dataset["answer"] = dataset["response"]
+
+    embeddings = create_default_ragas_embeddings()
 
     @experiment()
     async def run_rag_evaluation(row):
@@ -227,7 +228,7 @@ async def evaluate_method(file_name, chunking_name, chunking_function, page_inde
 
         async def evaluate_ar():
             try:
-                score = await AnswerRelevancy(llm=next(llm_iterator), embeddings=next(embedding_iterator)).ascore(
+                score = await AnswerRelevancy(llm=next(llm_iterator), embeddings=embeddings).ascore(
                     user_input=row["user_input"],
                     response=row["response"]
                 )
@@ -238,7 +239,7 @@ async def evaluate_method(file_name, chunking_name, chunking_function, page_inde
 
         async def evaluate_ac():
             try:
-                score = await AnswerCorrectness(llm=next(llm_iterator), embeddings=next(embedding_iterator)).ascore(
+                score = await AnswerCorrectness(llm=next(llm_iterator), embeddings=embeddings).ascore(
                     user_input=row["user_input"],
                     response=row["response"],
                     reference=row["reference"]

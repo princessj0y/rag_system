@@ -1,11 +1,11 @@
 from utils.documents import make_chunking_document_aware
 
 def _run_semantic_chunking(raw_text, threshold, is_eng = False):
-    from utils.model_factories import default_embeddings
+    from utils.model_factories import create_default_embeddings
     from langchain_experimental.text_splitter import SemanticChunker
 
     text_splitter = SemanticChunker(
-        default_embeddings, 
+        create_default_embeddings(), 
         breakpoint_threshold_type="percentile",
         breakpoint_threshold_amount=threshold
     )
