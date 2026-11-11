@@ -139,15 +139,6 @@ def run_agentic_enrich_chunking(docs, model=None, is_eng=False):
         chunk_doc.metadata["generated_summary"] = summary
 
     return chunks
-    
-def run_agentic_enrich_chunking_llama3(pdf_path, is_eng):
-    return run_agentic_enrich_chunking('llama3', pdf_path, is_eng)
-
-def run_agentic_enrich_chunking_phi3(pdf_path, is_eng):
-    return run_agentic_enrich_chunking('phi3', pdf_path, is_eng) 
-
-def run_agentic_enrich_chunking_gpt_oss(pdf_path, is_eng):
-    return run_agentic_enrich_chunking('gpt-oss:120b-cloud', pdf_path, is_eng) 
 
 if __name__ == "__main__":
     import yaml

@@ -66,8 +66,6 @@ chunking_strategies = {
     "Semantic Chunking 0.90": run_semantic_chunking_90,
     "Sentence-based Chunking": run_advanced_sentence_chunking,
     "Sliding Window Chunking": run_sliding_window,
-    #"Agentic Chunking Phi3": process_agentic_phi3,
-    #"Agentic Chunking llama3": process_agentic_llama3,
     "Agentic Chunking": run_agentic_chunking,
     "Agentic Enrich Chunking": run_agentic_enrich_chunking,
     "PageIndex": None,
