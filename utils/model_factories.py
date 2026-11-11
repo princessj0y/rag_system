@@ -61,6 +61,7 @@ embeddings_model_name = 'qwen3-embedding:0.6b'
 #embeddings_model_name = 'huggingface/nlpaueb/bert-base-uncased-eurlex'
 #embeddings_model_name = 'huggingface/all-MiniLM-L6-v2'
 
+judge_embeddings_model_name = 'qwen3-embedding:0.6b'
 ########################################################################
 #                        Defaults object                               #
 ########################################################################
@@ -68,6 +69,7 @@ embeddings_model_name = 'qwen3-embedding:0.6b'
 model_defaults = SimpleNamespace(
     llm=model_name,
     embeddings=embeddings_model_name,
+    judge_embeddings=judge_embeddings_model_name,
 )
 
 ########################################################################
@@ -358,16 +360,19 @@ def create_ragas_embedding_model(model, provider="openai", **kwargs):
     return embedding_factory(model=model, provider=provider, interface="modern", **kwargs)
 
 def create_default_ragas_embeddings():
-    if embeddings_model_name.startswith("huggingface/"):
-        logger.info("Running with HuggingFace for embeddings...")
+    # When Ragas uses the judge embedding model it is usually comparing a generated answer against a ground truth answer.
+    # Because this is an answer-to-answer comparison, it is symmetric.
+    # Task prefixes are designed for asymmetric search (matching a short question to a long passage). 
+    if judge_embeddings_model_name.startswith("huggingface/"):
+        logger.info("Running with HuggingFace for judge embeddings...")
         return create_ragas_embedding_model(
-            model=embeddings_model_name[len("huggingface/"):],
+            model=judge_embeddings_model_name[len("huggingface/"):],
             provider="huggingface",
         )
 
-    logger.info("Running with Ollama for embeddings...")
+    logger.info("Running with Ollama for judge embeddings...")
     return create_ragas_embedding_model(
-        model=f"ollama/{embeddings_model_name}",
+        model=f"ollama/{judge_embeddings_model_name}",
         provider="litellm", #todo: why did i choose litellm? 
         api_base="http://localhost:11434",
     )
